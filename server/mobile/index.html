@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MathQuiz — Mobile service</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pirata+One&family=Special+Elite&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sea-deep:#072D3B;
+    --sea-mid:#0E4C5E;
+    --sea-light:#1C7293;
+    --parchment:#F3E5C3;
+    --parchment-dark:#E4D0A0;
+    --gold:#D4A72C;
+    --wood:#5A3A22;
+    --coral:#C7502A;
+    --ink:#26160A;
+    --success:#3C8562;
+    --shadow: 0 18px 40px rgba(2,15,20,.45);
+  }
+
+  *{box-sizing:border-box;}
+
+  html,body{
+    margin:0;
+    padding:0;
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+
+  body{
+    font-family:'Poppins', sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(ellipse at top, rgba(255,235,180,.18), transparent 55%),
+      linear-gradient(180deg, var(--sea-mid) 0%, var(--sea-deep) 55%, #041C25 100%);
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    padding: 24px 16px 90px;
+  }
+
+  /* -------- Ambient sky -------- */
+  .sun{
+    position:fixed;
+    top:6%;
+    right:10%;
+    width:70px;
+    height:70px;
+    border-radius:50%;
+    background: radial-gradient(circle at 35% 35%, #FFF3C4, var(--gold) 70%);
+    box-shadow: 0 0 60px 12px rgba(212,167,44,.35);
+    z-index:0;
+  }
+
+  .cloud{
+    position:fixed;
+    background: rgba(243,229,195,.14);
+    border-radius: 50px;
+    filter: blur(1px);
+    z-index:0;
+  }
+  .cloud::before, .cloud::after{
+    content:"";
+    position:absolute;
+    background:inherit;
+    border-radius:50%;
+  }
+  .cloud1{ width:140px; height:36px; top:12%; left:-160px; animation: drift 34s linear infinite; }
+  .cloud1::before{ width:70px; height:70px; top:-30px; left:14px; }
+  .cloud1::after{ width:50px; height:50px; top:-20px; left:70px; }
+  .cloud2{ width:110px; height:28px; top:22%; left:-160px; animation: drift 46s linear infinite; animation-delay:-18s; opacity:.7; }
+  .cloud2::before{ width:50px; height:50px; top:-22px; left:10px; }
+  .cloud2::after{ width:36px; height:36px; top:-14px; left:52px; }
+
+  @keyframes drift{
+    from{ transform: translateX(0); }
+    to{ transform: translateX(calc(100vw + 200px)); }
+  }
+
+  /* -------- Flying parrot -------- */
+  .parrot{
+    position:fixed;
+    top:16%;
+    left:-80px;
+    font-size:34px;
+    z-index:2;
+    transform: scaleX(-1);
+    animation: fly 16s ease-in-out infinite;
+    animation-delay: 3s;
+    filter: drop-shadow(0 6px 6px rgba(0,0,0,.35));
+  }
+  @keyframes fly{
+    0%   { left:-80px; top:18%; transform: scaleX(-1) rotate(0deg); }
+    45%  { left:60vw;  top:8%;  transform: scaleX(-1) rotate(4deg); }
+    55%  { left:66vw;  top:8%;  transform: scaleX(-1) rotate(-2deg); }
+    100% { left:110vw; top:20%; transform: scaleX(-1) rotate(0deg); }
+  }
+
+  /* -------- Waves -------- */
+  .waves{
+    position:fixed;
+    left:0; right:0; bottom:0;
+    width:100%;
+    line-height:0;
+    z-index:1;
+  }
+  .waves svg{ width:200%; height:120px; animation: sail 12s linear infinite; }
+  .wave-back{ opacity:.55; }
+  .wave-back svg{ animation-duration:18s; }
+
+  @keyframes sail{
+    from{ transform: translateX(0); }
+    to{ transform: translateX(-50%); }
+  }
+
+  .ship{
+    position:fixed;
+    bottom:52px;
+    left:8%;
+    font-size:38px;
+    z-index:2;
+    animation: bob 4s ease-in-out infinite;
+    filter: drop-shadow(0 6px 6px rgba(0,0,0,.4));
+  }
+  @keyframes bob{
+    0%,100%{ transform: translateY(0) rotate(-2deg); }
+    50%{ transform: translateY(-10px) rotate(2deg); }
+  }
+
+  /* -------- Main scroll card -------- */
+  .scroll{
+    position:relative;
+    z-index:3;
+    width:100%;
+    max-width:440px;
+    background: var(--parchment);
+    background-image:
+      radial-gradient(circle at 12% 18%, rgba(90,58,34,.06), transparent 40%),
+      radial-gradient(circle at 88% 82%, rgba(90,58,34,.08), transparent 45%);
+    border:3px solid var(--wood);
+    border-radius:18px;
+    padding: 32px 24px 28px;
+    box-shadow: var(--shadow), inset 0 0 0 6px rgba(90,58,34,.08);
+    text-align:center;
+  }
+
+  .eyebrow{
+    font-family:'Special Elite', monospace;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    font-size:12px;
+    color:var(--coral);
+    margin:0 0 6px;
+  }
+
+  h1{
+    font-family:'Pirata One', cursive;
+    font-size: clamp(2.4rem, 9vw, 3.1rem);
+    color:var(--wood);
+    margin: 0 0 4px;
+    letter-spacing:.03em;
+    text-shadow: 2px 2px 0 rgba(212,167,44,.4);
+  }
+
+  .subtitle{
+    font-family:'Special Elite', monospace;
+    font-size:13px;
+    color: #5c4a30;
+    margin: 0 0 22px;
+  }
+
+  .status-dot{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-family:'Special Elite', monospace;
+    font-size:11px;
+    color:#6b5636;
+    position:absolute;
+    top:14px;
+    right:16px;
+  }
+  .status-dot i{
+    width:8px; height:8px; border-radius:50%;
+    background:#b5482f;
+    display:inline-block;
+    transition: background .3s ease;
+  }
+  .status-dot.connected i{ background: var(--success); box-shadow:0 0 6px var(--success);}
+  .status-dot.connecting i{ background: var(--gold); animation: pulse 1s ease-in-out infinite; }
+
+  @keyframes pulse{
+    0%,100%{ opacity:1; }
+    50%{ opacity:.3; }
+  }
+
+  form{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    align-items:stretch;
+  }
+
+  label{
+    font-size:13px;
+    font-weight:600;
+    color:var(--wood);
+    text-align:left;
+    margin-left:4px;
+  }
+
+  input[type=text]{
+    font-family:'Poppins', sans-serif;
+    font-size:16px; /* prevents iOS zoom-on-focus */
+    padding:14px 16px;
+    border-radius:10px;
+    border:2px solid var(--wood);
+    background: #FFFBF0;
+    color:var(--ink);
+    outline-offset:2px;
+  }
+  input[type=text]:focus-visible{
+    outline: 3px solid var(--sea-light);
+  }
+
+  button{
+    font-family:'Poppins', sans-serif;
+    font-weight:600;
+    font-size:15px;
+    background: linear-gradient(180deg, var(--coral), #A63D1E);
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:14px 20px;
+    cursor:pointer;
+    box-shadow: 0 8px 0 #7C2C15, 0 12px 18px rgba(0,0,0,.25);
+    transition: transform .12s ease, box-shadow .12s ease;
+    letter-spacing:.02em;
+  }
+  button:active{
+    transform: translateY(6px);
+    box-shadow: 0 2px 0 #7C2C15, 0 4px 10px rgba(0,0,0,.2);
+  }
+  button:focus-visible{
+    outline: 3px solid var(--sea-light);
+    outline-offset:2px;
+  }
+
+  /* -------- Waiting view -------- */
+  .waiting-view, .question-view{
+    display:none;
+  }
+
+  /* Avatar affiché une fois le pseudo rejoint */
+  .avatar-wrap{
+    display:flex;
+    justify-content:center;
+    margin: 4px 0 10px;
+  }
+  .avatar-wrap img{
+    width:88px;
+    height:88px;
+    border-radius:50%;
+    border:3px solid var(--gold);
+    background:#FFFBF0;
+    box-shadow: 0 6px 14px rgba(0,0,0,.25);
+    opacity:0;
+    transform: scale(.85);
+    animation: avatarPop .4s ease forwards;
+  }
+  @keyframes avatarPop{
+    to{ opacity:1; transform: scale(1); }
+  }
+
+  .greeting{
+    font-size:16px;
+    font-weight:600;
+    color:var(--wood);
+    margin: 4px 0 6px;
+  }
+  .greeting .pseudo{ color: var(--coral); }
+
+  .waiting-caption{
+    font-family:'Special Elite', monospace;
+    font-size:13px;
+    color:#5c4a30;
+    margin: 0 0 18px;
+  }
+
+  .stage{
+    position:relative;
+    height:120px;
+    margin: 4px auto 6px;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+  }
+
+  .pirate{
+    font-size:56px;
+    display:inline-block;
+    transform-origin:bottom center;
+    animation: dance 1.1s ease-in-out infinite;
+    filter: drop-shadow(0 6px 4px rgba(0,0,0,.25));
+  }
+  @keyframes dance{
+    0%,100%{ transform: rotate(-8deg) translateY(0); }
+    25%{ transform: rotate(4deg) translateY(-4px); }
+    50%{ transform: rotate(-4deg) translateY(0); }
+    75%{ transform: rotate(8deg) translateY(-6px); }
+  }
+
+  .dots{
+    display:flex;
+    justify-content:center;
+    gap:6px;
+    margin-top:8px;
+  }
+  .dots span{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--wood);
+    opacity:.35;
+    animation: dotBlink 1.2s ease-in-out infinite;
+  }
+  .dots span:nth-child(2){ animation-delay:.2s; }
+  .dots span:nth-child(3){ animation-delay:.4s; }
+  @keyframes dotBlink{
+    0%,80%,100%{ opacity:.25; }
+    40%{ opacity:1; }
+  }
+
+  /* -------- Question view -------- */
+  .question-text{
+    font-size:18px;
+    font-weight:600;
+    color:var(--wood);
+    margin: 6px 0 20px;
+    line-height:1.4;
+  }
+
+  .choices{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .choice-btn{
+    background: #FFFBF0;
+    color:var(--wood);
+    border:2px solid var(--wood);
+    box-shadow:none;
+    text-align:left;
+    padding:12px 16px;
+  }
+  .choice-btn:active{
+    transform: translateY(2px);
+  }
+  .choice-btn.selected{
+    background: var(--gold);
+    border-color:var(--wood);
+  }
+
+  .answer-feedback{
+    margin-top:14px;
+    font-family:'Special Elite', monospace;
+    font-size:13px;
+    min-height:18px;
+  }
+
+  footer.credit{
+    position:relative;
+    z-index:3;
+    text-align:center;
+    font-family:'Special Elite', monospace;
+    color: rgba(243,229,195,.55);
+    font-size:11px;
+    margin-top:16px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+  }
+
+  @media (max-width:380px){
+    .scroll{ padding:26px 18px 22px; }
+    h1{ font-size:2.1rem; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="sun" aria-hidden="true"></div>
+  <div class="cloud cloud1" aria-hidden="true"></div>
+  <div class="cloud cloud2" aria-hidden="true"></div>
+  <div class="parrot" aria-hidden="true">🦜</div>
+  <div class="ship" aria-hidden="true">⛵</div>
+
+  <div class="waves wave-back" aria-hidden="true">
+    <svg viewBox="0 0 1440 120" preserveAspectRatio="none"><path d="M0,64 C240,110 480,10 720,50 C960,90 1200,20 1440,64 L1440,120 L0,120 Z" fill="#0A4256"></path></svg>
+  </div>
+  <div class="waves" aria-hidden="true">
+    <svg viewBox="0 0 1440 120" preserveAspectRatio="none"><path d="M0,80 C240,30 480,110 720,70 C960,30 1200,100 1440,60 L1440,120 L0,120 Z" fill="#072D3B"></path></svg>
+  </div>
+
+  <main class="scroll">
+    <span class="status-dot connecting" id="statusDot"><i></i><span id="statusLabel">connecting…</span></span>
+
+    <!-- Vue 1 : saisie du pseudo -->
+    <section id="pseudoView">
+      <p class="eyebrow">Online Quiz</p>
+      <h1>MathQuiz</h1>
+      <p class="subtitle">Hoist the nickname, sailor, and join the crew.</p>
+
+      <form id="getPseudo" autocomplete="off">
+        <label for="pseudo">Enter your pirate identity</label>
+        <input type="text" id="pseudo" name="pseudo" placeholder="Ex. Barbe-Noire" required maxlength="24">
+        <button type="submit">Hop aboard</button>
+      </form>
+    </section>
+
+    <!-- Vue 2 : en attente de question -->
+    <section class="waiting-view" id="waitingView">
+      <p class="eyebrow">Everyone onboard</p>
+      <div class="avatar-wrap">
+        <img id="userAvatar" src="" alt="Avatar du joueur" width="88" height="88">
+      </div>
+      <p class="greeting">Hi <span class="pseudo" id="greetingPseudo"></span> 👋</p>
+      <p class="waiting-caption">Waiting for questions ...</p>
+      <div class="stage">
+        <span class="pirate" aria-hidden="true">🏴‍☠️</span>
+      </div>
+      <div class="dots" aria-hidden="true"><span></span><span></span><span></span></div>
+    </section>
+
+    <!-- Vue 3 : question reçue -->
+    <section class="question-view" id="questionView">
+      <p class="eyebrow" id="questionEyebrow">Question</p>
+      <p class="question-text" id="questionText"></p>
+      <div class="choices" id="choicesBox"></div>
+      <p class="answer-feedback" id="answerFeedback"></p>
+    </section>
+  </main>
+
+  <audio id="bgMusic" loop preload="none">
+    <source src="../assets/music2.mp3" type="audio/mpeg">
+  </audio>
+  <div id="container"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Éléments ----------
+  const pseudoView   = document.getElementById('pseudoView');
+  const waitingView  = document.getElementById('waitingView');
+  const questionView = document.getElementById('questionView');
+  const form         = document.getElementById('getPseudo');
+  const pseudoInput  = document.getElementById('pseudo');
+  const greetingEl   = document.getElementById('greetingPseudo');
+  const avatarEl     = document.getElementById('userAvatar');
+  const statusDot    = document.getElementById('statusDot');
+  const statusLabel  = document.getElementById('statusLabel');
+  const questionText = document.getElementById('questionText');
+  const choicesBox   = document.getElementById('choicesBox');
+  const answerFeedback = document.getElementById('answerFeedback');
+  const bgMusic       = document.getElementById('bgMusic');
+
+  let pseudo = '';
+  let currentQuestionId = null;
+  let socket = null;
+
+  // ---------- Construction de l'URL WebSocket ----------
+  // Le serveur Node.js sert les fichiers statiques ET le WebSocket sur le
+  // même port (nécessaire pour passer par un tunnel ngrok mono-port).
+  // On réutilise donc window.location.host tel quel (hostname + port si
+  // explicite dans l'URL courante), en adaptant juste le protocole :
+  // http → ws, https → wss.
+  function buildWebSocketUrl(){
+    const loc = window.location;
+    const scheme = loc.protocol === 'https:' ? 'wss' : 'ws';
+    return `${scheme}://${loc.host}`;
+  }
+
+  // ---------- Statut de connexion ----------
+  function setStatus(state){
+    statusDot.className = 'status-dot ' + state;
+    statusLabel.textContent =
+      state === 'connected'  ? 'connecté' :
+      state === 'connecting' ? 'connexion…' : 'déconnecté';
+  }
+
+  // ---------- Vues ----------
+  function showView(view){
+    [pseudoView, waitingView, questionView].forEach(v => v.style.display = 'none');
+    view.style.display = 'block';
+  }
+
+  // ---------- Rejoindre la partie : avatar + musique ----------
+  function joinGame(name){
+    pseudo = name;
+    greetingEl.textContent = pseudo;
+
+    // Avatar généré à partir du pseudo (même pseudo = même avatar à chaque fois)
+    avatarEl.src = 'https://api.dicebear.com/10.x/loops/svg?seed=' + encodeURIComponent(pseudo);
+
+    showView(waitingView);
+
+    // Lecture audio : nécessite un geste utilisateur sur mobile (le clic sur
+    // "Embarquer" en fait office), donc on la déclenche ici plutôt qu'en
+    // autoplay dans le <head>.
+    bgMusic.currentTime = 0;
+    bgMusic.play().catch(() => { /* lecture bloquée par le navigateur, tant pis */ });
+
+    if (socket && socket.readyState === WebSocket.OPEN){
+      socket.send(JSON.stringify({ type: 'pseudo', pseudo }));
+    }
+    // sinon le pseudo sera envoyé automatiquement à l'ouverture de la connexion
+  }
+
+  // ---------- WebSocket ----------
+  function connect(){
+    setStatus('connecting');
+    socket = new WebSocket(buildWebSocketUrl());
+
+    socket.addEventListener('open', () => {
+      setStatus('connected');
+      // On envoie le pseudo dès que la connexion est prête.
+      if (pseudo){
+        socket.send(JSON.stringify({ type: 'pseudo', pseudo }));
+      }
+    });
+
+    socket.addEventListener('message', (event) => {
+      let data;
+      try { data = JSON.parse(event.data); }
+      catch (e) { console.warn('Message WS non-JSON ignoré :', event.data); return; }
+
+      switch (data.type){
+        case 'question':
+          renderQuestion(data);
+          break;
+        case 'game_started':
+            console.log(data);
+            bgMusic.src = "../assets/music" + data.music_id + ".mp3";
+            bgMusic.play();
+            break;
+        case 'game_ended':
+            bgMusic.src = "../assets/finished.mp3";
+            document.getElementById("waiting_caption").textContent = "It's finished, look up to the screen to see your score";
+            bgMusic.play();
+            break;
+        case 'answer_ack':
+          renderFeedback(data);
+          break;
+        case 'percent_info':
+          if (data.to_pseudo === pseudo) {
+            console.info(`Pourcentage de bonnes réponses pour ${pseudo} : ${data.percent}%`);
+          }
+          const ship = document.querySelector(".ship");
+
+          ship.style.left = data.percent + "%";
+          break;
+        case 'info':
+          console.info('Serveur :', data.message);
+          break;
+        default:
+          console.warn('Type de message WS inconnu :', data.type);
+      }
+    });
+
+    socket.addEventListener('close', () => {
+      setStatus('disconnected');
+      // Tentative de reconnexion automatique
+      setTimeout(connect, 2000);
+    });
+
+    socket.addEventListener('error', () => {
+      setStatus('disconnected');
+      socket.close();
+    });
+  }
+
+  // ---------- Rendu d'une question ----------
+  function renderQuestion(data){
+    currentQuestionId = data.id ?? null;
+    questionText.textContent = data.text || '';
+    choicesBox.innerHTML = '';
+    answerFeedback.textContent = '';
+
+    (data.choices || []).forEach((choice) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'choice-btn';
+      btn.textContent = choice;
+      btn.addEventListener('click', () => submitAnswer(choice, btn));
+      choicesBox.appendChild(btn);
+    });
+
+    showView(questionView);
+  }
+  let got_answer = false;
+  function submitAnswer(answer, btnEl){
+    [...choicesBox.children].forEach(b => b.classList.remove('selected'));
+    btnEl.classList.add('selected');
+
+    if (socket && socket.readyState === WebSocket.OPEN){
+      socket.send(JSON.stringify({
+        type: 'answer',
+        id: currentQuestionId,
+        pseudo,
+        answer
+      }));
+    }
+    answerFeedback.textContent = 'Réponse envoyée, on attend le verdict…';
+    got_answer = false;
+    setTimeout(() => verify_answer_sent(answer), 200);
+  }
+  function verify_answer_sent(answer){
+    if (!got_answer){
+      socket.send(JSON.stringify({
+        type: 'answer',
+        id: currentQuestionId,
+        pseudo,
+        answer
+      }));
+      setTimeout(() => verify_answer_sent(answer), 200);
+    }
+  }
+  function renderFeedback(data){
+    got_answer = true;
+    let container = document.getElementById("container");
+    answerFeedback.textContent = data.correct
+      ? '🏆 Correct'
+      : '💀 Wrong, correct answer was : ' + (data.correctAnswer ?? '?');
+    if (answerFeedback.textContent=='💀 Wrong, correct answer was : ' + (data.correctAnswer ?? '?')){
+
+        container.innerHTML = `
+                    <audio autoplay>
+                        <source src="../assets/fail.mp3" type="audio/mpeg">
+                    Your browser does not support the audio element.
+                    </audio>`
+        navigator.vibrate(500);
+        
+    }
+    // Retour à l'attente après un court instant, prêt pour la question suivante
+    setTimeout(() => showView(waitingView), 2000);
+              setTimeout(() => {
+                container.innerHTML = "";
+            }, 5000);
+  }
+
+  // ---------- Soumission du formulaire pseudo ----------
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const value = pseudoInput.value.trim();
+    if (!value) return;
+    joinGame(value);
+  });
+
+  // ---------- Démarrage ----------
+  connect();
+})();
+</script>
+<script src="https://unpkg.com/ios-haptics@latest/dist/index.umd.js"></script>
+</body>
+</html>
