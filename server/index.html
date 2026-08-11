@@ -26,7 +26,7 @@
         let music_id = 1;
         let questions = [];
         let Gamecode = "";
-        const char_list = ["A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P", "Q", "S", "D", "F", "G", "H", "J", "K", "L", "M", "W", "X", "C", "V", "B", "N", "?", "/", "-"];
+        const char_list = ["A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P", "Q", "S", "D", "F", "G", "H", "J", "K", "L", "M", "W", "X", "C", "V", "B", "N", "-"];
 
         for (i = 1; i <= 6; i++) {
             Gamecode = Gamecode + char_list[Math.floor(Math.random() * char_list.length)];
@@ -435,12 +435,21 @@
         });
 
         function verify_game_ended() {
+
             let all_finished = true;
             for (const [key, value] of progression.entries()) {
-                if (value.answered < question_number) {
-                    all_finished = false;
-                    break;
-                    return 0;
+                if (playing_with_q_number) {
+                    if (value.answered < question_number) {
+                        all_finished = false;
+                        break;
+                        return 0;
+                    }
+                }else {
+                    if (!((Date.now() - value.epoch) > minutes*60*1000)){
+                        all_finished = false;
+                        break;
+                        return 0;
+                    }
                 }
             }
             if (all_finished) {
@@ -541,11 +550,56 @@
                     case 'player_answered':
                         console.log("Player answered: ", data.pseudo, " with answer: ", data.answer, " correct: ", data.correct);
                         const user = progression.get(data.pseudo);
-                        user.answered++;
-                        if (data.correct) {
-                            user.correct++;
-                            console.log("Player answered correctly: ", data.pseudo);
-                            container.innerHTML = `
+                        if (!playing_with_q_number) {
+                            console.log("We are playing with minutes. Users currently have " + minutes*60 + " seconds to answer maximum of correct questions");
+                            console.log("Time will be less counted than number of correct questions.");
+                            console.log(user.epoch);
+                            console.log(Date.now());
+                            console.log(data.pseudo + " is curently at " + (Date.now() - user.epoch) + " seconds of game");
+                            if (Date.now() - user.epoch > minutes * 60*1000) {
+                                console.log("Unfortunately for him, time is over, this question cannot be counted");
+                            } else {
+                                console.log("Great, just in time");
+                                user.answered++;
+                                console.log("OK, number of question increased, now let's see if it's correct.");
+                                if (data.correct) {
+                                    console.log("Great, it's correct");
+                                    user.correct++;
+                                    user.points = 200 * user.correct / user.answered
+                                } else {
+                                    console.log("Unfortunately, NO");
+                                }
+                                window.updatePlayerScore(data.pseudo, user.points);
+                                let percent = (100 * ((Date.now() - user.epoch) / (minutes * 60))).toFixed(2);
+                                const ship = document.getElementById("ship-" + data.pseudo);
+                                ship.style.setProperty("--ship-x", percent + "%");
+                                const crew = document.getElementById("ship-crew-" + data.pseudo);
+                                crew.setAttribute(
+                                    "aria-label",
+                                    data.pseudo + ", " + percent + "% of the race"
+                                );
+                                socket.send(JSON.stringify({
+                                    type: "percent_info",
+                                    to_pseudo: data.pseudo,
+                                    percent: percent,
+                                    game_id: Gamecode
+                                }));
+                                setTimeout(() => {
+                                    send_question(data.pseudo);
+                                }, 2500);
+
+
+
+
+
+                            }
+                        }
+                        else {
+                            user.answered++;
+                            if (data.correct) {
+                                user.correct++;
+                                console.log("Player answered correctly: ", data.pseudo);
+                                container.innerHTML = `
                 <div class="notification">
                     <div class="chat">
                     <div class="profile">
@@ -560,14 +614,20 @@
                     </div>
                 </div>`;
 
-                        } else {
-                            console.log("Player answered incorrectly: ", data.pseudo);
-                            if (sound_effects_on) {
-                                container.innerHTML = `
-                    <audio autoplay>
+                            } else {
+                                console.log("Player answered incorrectly: ", data.pseudo);
+                                if (sound_effects_on) {
+                                    let sound_var = `                     <audio autoplay>
                         <source src="assets/fail.mp3" type="audio/mpeg">
                     Your browser does not support the audio element.
-                    </audio>
+                    </audio>`;
+                                }
+                                else {
+                                    let sound_var = "";
+                                }
+
+                                container.innerHTML = sound_var + `
+
                     <div class="notification">
                         <div class="chat">
                         <div class="profile">
@@ -582,43 +642,27 @@
                         </div>
                     </div>`;
                             }
-                            else {
-                                container.innerHTML = `
-                    <div class="notification">
-                        <div class="chat">
-                        <div class="profile">
-                            <img src="https://api.dicebear.com/10.x/loops/svg?seed=` + data.pseudo + `" alt="">
-                        </div>
-                        <div class="message">
-                            ` + data.pseudo + ` à raté. En attente de la prochaine question.
-                        </div>
-                        <div class="user_game">
-                            ` + data.pseudo + `
-                        </div>
-                        </div>
-                    </div>`;
-                            }
-                        }
-                        setTimeout(() => {
-                            container.innerHTML = "";
-                        }, 5000);
 
-                        const time = (Date.now() - user.epoch) / 1000;
-
-                        user.points = 1000 * (user.correct / question_number) * (question_number / time);
-                        window.updatePlayerScore(data.pseudo, user.points);
-
-
-                        if (user.answered < question_number) {
                             setTimeout(() => {
-                                send_question(data.pseudo);
-                            }, 2500);
-                        }
-                        else {
+                                container.innerHTML = "";
+                            }, 5000);
 
-                            console.log("Player finished all questions: ", data.pseudo);
-                            if (sound_effects_on) {
-                                container.innerHTML = `
+                            const time = (Date.now() - user.epoch) / 1000;
+
+                            user.points = 1000 * (user.correct / question_number) * (question_number / time);
+                            window.updatePlayerScore(data.pseudo, user.points);
+
+
+                            if (user.answered < question_number) {
+                                setTimeout(() => {
+                                    send_question(data.pseudo);
+                                }, 2500);
+                            }
+                            else {
+
+                                console.log("Player finished all questions: ", data.pseudo);
+                                if (sound_effects_on) {
+                                    container.innerHTML = `
                     <div class="notification">
                         <audio autoplay>
                             <source src="assets/victory.mp3" type="audio/mpeg">
@@ -636,8 +680,8 @@
                         </div>
                         </div>
                     </div>`;
-                            } else {
-                                container.innerHTML = `
+                                } else {
+                                    container.innerHTML = `
                     <div class="notification">
                         <div class="chat">
                         <div class="profile">
@@ -651,34 +695,33 @@
                         </div>
                         </div>
                     </div>`;
+                                }
+                                setTimeout(() => {
+                                    container.innerHTML = "";
+                                }, 5000);
                             }
-                            setTimeout(() => {
-                                container.innerHTML = "";
-                            }, 5000);
-                        }
-                        let percent = (100 * user.answered / question_number).toFixed(2);
-                        const ship = document.getElementById("ship-" + data.pseudo);
-                        if (percent == 100) {
-                            ship.style.setProperty("--ship-x", 99 + "%");
-                        }
-                        else {
+
+
+
+                            let percent = (100 * user.answered / question_number).toFixed(2);
+                            const ship = document.getElementById("ship-" + data.pseudo);
                             ship.style.setProperty("--ship-x", percent + "%");
 
+
+
+                            const crew = document.getElementById("ship-crew-" + data.pseudo);
+                            crew.setAttribute(
+                                "aria-label",
+                                data.pseudo + ", " + percent + "% of the race"
+                            );
+                            socket.send(JSON.stringify({
+                                type: "percent_info",
+                                to_pseudo: data.pseudo,
+                                percent: percent,
+                                game_id: Gamecode
+                            }));
+
                         }
-
-                        const crew = document.getElementById("ship-crew-" + data.pseudo);
-                        crew.setAttribute(
-                            "aria-label",
-                            data.pseudo + ", " + percent + "% de la course"
-                        );
-                        socket.send(JSON.stringify({
-                            type: "percent_info",
-                            to_pseudo: data.pseudo,
-                            percent: percent,
-                            game_id: Gamecode
-                        }));
-
-
                         if (verify_game_ended()) {
                             console.log("Game ended");
                             document.getElementById("sea").style.display = "none";
@@ -686,29 +729,6 @@
                             audioElement.src = "assets/finished.mp3"
                             audioElement.play();
                             audioElement.loop = false;
-                            /*                    let score_bill = new Map();
-                            
-                                                for (const [key, value] of progression) {
-                                                    score_bill.set(value.points, key);
-                                                    console.log("Player: " + key + " Points: " + value.points);
-                                                }
-                                                score_bill_sorted = new Map([...score_bill.entries()].sort().reverse());
-                                                const element = document.getElementById("billboard");
-                                                for (const [key, value] of score_bill_sorted.entries()) {
-                                                    let display_user_div = document.createElement("div");
-                                                    display_user_div.className = "finished_billboard";
-                                                    display_user_div.id = "billboard_" + key;
-                                                    display_user_div.innerHTML = `<img src="https://api.dicebear.com/10.x/loops/svg?seed=${value}" alt="${value}"><p class="user-pseudo">${value} - ${key.toFixed(2)} points</p>`;
-                                                    element.appendChild(display_user_div);
-                            
-                                                }
-                            
-                            */
-
-
-
-
-
                         }
 
 
