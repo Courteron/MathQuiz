@@ -20,20 +20,50 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
 // ---------------------------------------------------------------
-// État de la partie
+// État global
 // ---------------------------------------------------------------
 
-// Une seule connexion "maître" à la fois. Les autres sont des "clients".
-let masterWs = null;
+// Métadonnées par connexion WebSocket (indépendant de la partie).
+// ws -> { id, gameId, pseudo, role: 'client' | 'master' | null }
+const connections = new Map();
 
-// ws -> { id, pseudo, role: 'client' | 'master' | null }
-const clients = new Map();
+// NOUVEAU : toutes les parties en cours.
+// gameId -> {
+//   masterWs,
+//   gameStarted,
+//   clients: Map(ws -> meta)   // uniquement les clients de CETTE partie
+//   currentQuestions: Map(pseudo -> question) // par joueur, pour CETTE partie
+// }
+const games = new Map();
 
-let gameStarted = false;
+function getGame(gameId) {
+  return games.get(gameId);
+}
 
-// NOUVEAU : chaque joueur a SA propre question courante.
-// clé = pseudo, valeur = { id, text, choices, correctAnswer }
-const currentQuestions = new Map();
+function getOrCreateGame(gameId) {
+  let game = games.get(gameId);
+  if (!game) {
+    game = {
+      masterWs: null,
+      gameStarted: false,
+      clients: new Map(),
+      currentQuestions: new Map(),
+    };
+    games.set(gameId, game);
+    console.log(`Nouvelle partie créée : ${gameId}`);
+  }
+  return game;
+}
+
+// Supprime une partie si elle n'a plus ni master ni client, pour éviter
+// d'accumuler des parties fantômes en mémoire.
+function cleanupGameIfEmpty(gameId) {
+  const game = games.get(gameId);
+  if (game && !game.masterWs && game.clients.size === 0) {
+    games.delete(gameId);
+    console.log(`Partie ${gameId} vidée, suppression.`);
+  }
+}
 
 // ---------------------------------------------------------------
 // Helpers d'envoi
@@ -45,22 +75,27 @@ function send(ws, payload) {
   }
 }
 
-function sendToMaster(payload) {
-  send(masterWs, payload);
+function sendToMaster(game, payload) {
+  if (game) send(game.masterWs, payload);
 }
 
-function broadcastToSingleClients(payload) {
-  for (const [ws, info] of clients) {
-    if (info.pseudo === payload.to_pseudo) send(ws, payload);
+function broadcastToSingleClient(game, pseudo, payload) {
+  if (!game) return;
+  for (const [ws, info] of game.clients) {
+    if (info.pseudo === pseudo) send(ws, payload);
   }
 }
-function broadcastToClients(payload) {
-  for (const [ws, info] of clients) {
+
+function broadcastToClients(game, payload) {
+  if (!game) return;
+  for (const [ws, info] of game.clients) {
     if (info.role === 'client') send(ws, payload);
   }
 }
-function publicClientList() {
-  return [...clients.values()]
+
+function publicClientList(game) {
+  if (!game) return [];
+  return [...game.clients.values()]
     .filter((info) => info.role === 'client')
     .map((info) => ({ id: info.id, pseudo: info.pseudo }));
 }
@@ -76,7 +111,8 @@ function publicQuestion(q) {
 
 wss.on('connection', (ws) => {
   const id = crypto.randomUUID();
-  clients.set(ws, { id, pseudo: null, role: null });
+  const meta = { id, gameId: null, pseudo: null, role: null };
+  connections.set(ws, meta);
   console.log(`Nouvelle connexion WebSocket (${id})`);
 
   ws.on('message', (raw) => {
@@ -87,43 +123,59 @@ wss.on('connection', (ws) => {
       return; // message non-JSON ignoré
     }
 
-    const info = clients.get(ws);
+    const info = connections.get(ws);
 
     switch (data.type) {
       // ---------------- MASTER ----------------
 
       case 'master_init': {
-        if (masterWs && masterWs !== ws) {
-          send(ws, { type: 'error', message: 'Un maître est déjà connecté.' });
+        if (!data.game_id) {
+          send(ws, { type: 'error', message: 'master_init nécessite game_id.' });
           return;
         }
-        masterWs = ws;
+
+        const game = getOrCreateGame(data.game_id);
+
+        if (game.masterWs && game.masterWs !== ws) {
+          send(ws, { type: 'error', message: 'Un maître est déjà connecté pour cette partie.' });
+          return;
+        }
+
+        game.masterWs = ws;
         info.role = 'master';
-        console.log('Master initialisé');
+        info.gameId = data.game_id;
+        console.log(`Master initialisé pour la partie ${data.game_id}`);
 
         send(ws, {
           type: 'acknowledge',
           role: 'master',
-          gameStarted,
-          clients: publicClientList(),
+          game_id: data.game_id,
+          gameStarted: game.gameStarted,
+          clients: publicClientList(game),
         });
         break;
       }
 
       case 'start_game': {
-        if (ws !== masterWs) {
-          send(ws, { type: 'error', message: 'Seul le maître peut démarrer la partie.' });
+        const game = getGame(info.gameId);
+        if (!game || ws !== game.masterWs) {
+          send(ws, { type: 'error', message: 'Seul le maître de cette partie peut la démarrer.' });
           return;
         }
-        gameStarted = true;
-        console.log('Partie démarrée par le master');
-        broadcastToClients({ type: 'game_started',music_id:data.music_id});
+        game.gameStarted = true;
+        console.log(`Partie ${info.gameId} démarrée par le master`);
+        broadcastToClients(game, {
+          type: 'game_started',
+          game_id: info.gameId,
+          music_id: data.music_id,
+        });
         break;
       }
 
       case 'send_question': {
-        if (ws !== masterWs) {
-          send(ws, { type: 'error', message: 'Seul le maître peut envoyer une question.' });
+        const game = getGame(info.gameId);
+        if (!game || ws !== game.masterWs) {
+          send(ws, { type: 'error', message: 'Seul le maître de cette partie peut envoyer une question.' });
           return;
         }
         if (!data.to_pseudo) {
@@ -131,7 +183,7 @@ wss.on('connection', (ws) => {
           return;
         }
 
-        // NOUVEAU : la question est stockée PAR JOUEUR, plus dans une variable globale.
+        // La question est stockée PAR JOUEUR, dans la partie concernée.
         const question = {
           id: data.id ?? crypto.randomUUID(),
           text: data.text,
@@ -139,52 +191,64 @@ wss.on('connection', (ws) => {
           choices: data.choices,
           correctAnswer: data.correctAnswer,
         };
-        currentQuestions.set(data.to_pseudo, question);
+        game.currentQuestions.set(data.to_pseudo, question);
 
-        console.log(`Nouvelle question envoyée à ${data.to_pseudo} : ${question.id}`);
-        broadcastToSingleClients({ type: 'question', ...publicQuestion(question) });
+        console.log(`[${info.gameId}] Nouvelle question envoyée à ${data.to_pseudo} : ${question.id}`);
+        broadcastToSingleClient(game, data.to_pseudo, { type: 'question', ...publicQuestion(question) });
         break;
       }
 
       case 'end_game': {
-        if (ws !== masterWs) {
-          send(ws, { type: 'error', message: 'Seul le maître peut terminer la partie.' });
+        const game = getGame(info.gameId);
+        if (!game || ws !== game.masterWs) {
+          send(ws, { type: 'error', message: 'Seul le maître de cette partie peut la terminer.' });
           return;
         }
-        gameStarted = false;
-        currentQuestions.clear(); // NOUVEAU : on vide toutes les questions en cours
-        console.log('Partie terminée par le master');
-        broadcastToClients({ type: 'game_ended' });
+        game.gameStarted = false;
+        game.currentQuestions.clear(); // on vide toutes les questions en cours de CETTE partie
+        console.log(`Partie ${info.gameId} terminée par le master`);
+        broadcastToClients(game, { type: 'game_ended', game_id: info.gameId, scores:data.scores });
         break;
       }
 
       // ---------------- CLIENTS ----------------
 
       case 'pseudo': {
+        if (!data.game_id) {
+          send(ws, { type: 'error', message: 'pseudo nécessite game_id.' });
+          return;
+        }
+
+        const game = getOrCreateGame(data.game_id);
+
         info.pseudo = data.pseudo;
+        info.gameId = data.game_id;
         if (!info.role) info.role = 'client';
-        console.log(`Pseudo enregistré : ${data.pseudo} (${info.id})`);
+        game.clients.set(ws, info);
+
+        console.log(`[${data.game_id}] Pseudo enregistré : ${data.pseudo} (${info.id})`);
 
         send(ws, {
           type: 'acknowledge',
           role: 'client',
-          gameStarted,
+          game_id: data.game_id,
+          gameStarted: game.gameStarted,
         });
 
-        // Le master est informé de chaque arrivée de joueur
-        sendToMaster({ type: 'client_joined', id: info.id, pseudo: info.pseudo });
-        console.log(`Client ${info.pseudo} (${info.id}) a rejoint la partie - Master prévenu.`);
+        // Le master de CETTE partie est informé de chaque arrivée de joueur
+        sendToMaster(game, { type: 'client_joined', id: info.id, pseudo: info.pseudo });
+        console.log(`Client ${info.pseudo} (${info.id}) a rejoint la partie ${data.game_id} - Master prévenu.`);
         break;
       }
 
       case 'answer': {
-        // NOUVEAU : on va chercher LA question de CE joueur, pas une variable globale
-        if (!info.pseudo) {
-          send(ws, { type: 'error', message: 'Pseudo non défini pour cette connexion.' });
+        const game = getGame(info.gameId);
+        if (!info.pseudo || !game) {
+          send(ws, { type: 'error', message: 'Pseudo/partie non définis pour cette connexion.' });
           return;
         }
 
-        const myQuestion = currentQuestions.get(info.pseudo);
+        const myQuestion = game.currentQuestions.get(info.pseudo);
 
         if (!myQuestion || data.id !== myQuestion.id) {
           send(ws, { type: 'error', message: 'Aucune question active pour cet identifiant.' });
@@ -200,10 +264,10 @@ wss.on('connection', (ws) => {
 
         // On retire la question répondue : le joueur ne peut plus y répondre deux fois
         // et il faudra que le master lui en envoie une nouvelle pour continuer.
-        currentQuestions.delete(info.pseudo);
+        game.currentQuestions.delete(info.pseudo);
 
-        // Le master voit les réponses arriver en temps réel, indépendamment des autres joueurs
-        sendToMaster({
+        // Le master de CETTE partie voit les réponses arriver en temps réel
+        sendToMaster(game, {
           type: 'player_answered',
           id: info.id,
           pseudo: info.pseudo,
@@ -212,36 +276,48 @@ wss.on('connection', (ws) => {
         });
         break;
       }
+
       case 'percent_info': {
-        if (ws !== masterWs) {
-          send(ws, { type: 'error', message: 'Seul le maître peut envoyer les pourcentages.' });
+        const game = getGame(info.gameId);
+        if (!game || ws !== game.masterWs) {
+          send(ws, { type: 'error', message: 'Seul le maître de cette partie peut envoyer les pourcentages.' });
           return;
         }
-        broadcastToSingleClients({ type: 'percent_info', to_pseudo: data.to_pseudo, percent: data.percent });
+        broadcastToSingleClient(game, data.to_pseudo, {
+          type: 'percent_info',
+          to_pseudo: data.to_pseudo,
+          percent: data.percent,
+        });
         break;
       }
+
       default:
         console.warn('Type de message inconnu reçu :', data.type);
     }
   });
 
   ws.on('close', () => {
-    const info = clients.get(ws);
-    clients.delete(ws);
+    const info = connections.get(ws);
+    connections.delete(ws);
 
-    if (ws === masterWs) {
-      masterWs = null;
-      console.log('Master déconnecté');
-      broadcastToClients({ type: 'master_disconnected' });
+    if (!info) return;
+
+    const game = getGame(info.gameId);
+
+    if (game && ws === game.masterWs) {
+      game.masterWs = null;
+      console.log(`Master de la partie ${info.gameId} déconnecté`);
+      broadcastToClients(game, { type: 'master_disconnected' });
+      cleanupGameIfEmpty(info.gameId);
       return;
     }
 
-    if (info) {
-      console.log(`Déconnexion : ${info.pseudo ?? 'inconnu'} (${info.id})`);
-      if (info.role === 'client') {
-        currentQuestions.delete(info.pseudo); // NOUVEAU : nettoyage de sa question en cours
-        sendToMaster({ type: 'client_left', id: info.id, pseudo: info.pseudo });
-      }
+    console.log(`Déconnexion : ${info.pseudo ?? 'inconnu'} (${info.id}) [partie ${info.gameId ?? 'aucune'}]`);
+    if (game && info.role === 'client') {
+      game.clients.delete(ws);
+      game.currentQuestions.delete(info.pseudo); // nettoyage de sa question en cours
+      sendToMaster(game, { type: 'client_left', id: info.id, pseudo: info.pseudo });
+      cleanupGameIfEmpty(info.gameId);
     }
   });
 });
