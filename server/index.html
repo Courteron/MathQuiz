@@ -360,9 +360,11 @@
         }
         function generate_question_list() {
             questions = [];
+            let question = "";
+            let correctAnswer = 0;
             for (let i = 0; i < question_number; i++) {
                 try {
-                    let question = generate_calculation();
+                    question = generate_calculation();
                 }
                 catch (error) {
                     console.error(error);
@@ -370,13 +372,13 @@
                 console.log("Generated question: " + question);
                 try {
                     if (question.includes("|")) {
-                        let correctAnswer = question.split("|");
+                        correctAnswer = question.split("|");
                         question = correctAnswer[0]
                         correctAnswer = correctAnswer[1];
                         console.log(correctAnswer);
                         console.log(question);
                     } else {
-                        let correctAnswer = eval(question);
+                        correctAnswer = eval(question);
                     }
                 }
                 catch (error) {
@@ -1833,25 +1835,6 @@
         </ul>
         <br>
         <button id="startGameBtn" class="glow-on-hover">Start Game</button>
-    </div>
-    <div id="questions_dev">
-        <form id="question_dev_form" style="display:none;">
-            <label for="question">Question:</label>
-            <input type="text" id="question" name="question">
-            <br>
-            <label for="a1">Answer1:</label>
-            <input type="text" id="a1" name="a1">
-            <br>
-            <label for="a2">Answer2:</label>
-            <input type="text" id="a2" name="a2">
-            <br>
-            <label for="a3">Answer3:</label>
-            <input type="text" id="a3" name="a3">
-            <br>
-            <label for="answer">Correct answer:</label>
-            <input type="text" id="answer" name="answer">
-            <br>
-            <button type="submit" id="question_form_submit">Submit</button>
     </div>
     <div id="sea">
     </div>
