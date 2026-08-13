@@ -360,7 +360,7 @@
             for (let i = 0; i < question_number; i++) {
                 let question = generate_calculation();
                 console.log("Generated question: " + question);
-                if ("|" in question) {
+                if (question.includes("|")) {
                     let correctAnswer = question.split("|");
                     question = correctAnswer[0]
                     correctAnswer = correctAnswer[1];
