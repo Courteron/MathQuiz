@@ -219,10 +219,13 @@
                 "music": music_id,
                 "QCM": QCM
             });
+            console.log("This log should appear #3");
             const div = document.getElementById("ToHide");
             if (div) div.style.display = 'none';
+            console.log("This log should appear #4");
             const hdiv = document.getElementById("players");
             if (hdiv) hdiv.style.display = 'block';
+            console.log("This log should appear #5");
             generate_question_list();
             new QRCode(
                 document.getElementById("qrcode"),
