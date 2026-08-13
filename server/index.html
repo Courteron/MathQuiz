@@ -225,8 +225,10 @@
             const hdiv = document.getElementById("players");
             if (hdiv) hdiv.style.display = 'block';
             generate_question_list();
-
-            new QRCode(document.getElementById("qrcode"), window.location.href + "mobile/index.html?code=" + Gamecode);
+            new QRCode(
+                document.getElementById("qrcode"),
+                `${window.location.origin}/mobile/index.html?code=${Gamecode}`
+            );
 
         }
         function generate_calculation() {
@@ -362,6 +364,8 @@
                     let correctAnswer = question.split("|");
                     question = correctAnswer[0]
                     correctAnswer = correctAnswer[1];
+                    console.log(correctAnswer);
+                    console.log(question);
                 } else {
                     let correctAnswer = eval(question);
                 }
