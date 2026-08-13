@@ -297,8 +297,18 @@
             }
             if (type == "equa") {
                 equation_solving = 0;
+
+                let old_add = additions;
+                let old_sub = substractions;
+                let old_mult = multiplications;
+                let old_div = divisions;
+                additions, substractions, multiplications, divisions = 1;
                 first_equation = generate_calculation();
                 equation_solving = 1;
+                let additions = old_add;
+                let substractions = old_sub;
+                let multiplications = old_mult;
+                let divisions = old_div;
                 let result = eval(first_equation);
                 let myresult = first_equation.match(/^(\d+)([+*/-])(\d+)$/);
                 let real_result = myresult[0];
