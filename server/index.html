@@ -227,11 +227,12 @@
             if (hdiv) hdiv.style.display = 'block';
             console.log("This log should appear #5");
             generate_question_list();
+            console.log("This log should appear #6");
             new QRCode(
                 document.getElementById("qrcode"),
                 `${window.location.origin}/mobile/index.html?code=${Gamecode}`
             );
-
+            console.log("This log should appear #7");
         }
         function generate_calculation() {
             const types = [];
