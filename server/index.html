@@ -361,16 +361,26 @@
         function generate_question_list() {
             questions = [];
             for (let i = 0; i < question_number; i++) {
-                let question = generate_calculation();
+                try {
+                    let question = generate_calculation();
+                }
+                catch (error) {
+                    console.error(error);
+                }
                 console.log("Generated question: " + question);
-                if (question.includes("|")) {
-                    let correctAnswer = question.split("|");
-                    question = correctAnswer[0]
-                    correctAnswer = correctAnswer[1];
-                    console.log(correctAnswer);
-                    console.log(question);
-                } else {
-                    let correctAnswer = eval(question);
+                try {
+                    if (question.includes("|")) {
+                        let correctAnswer = question.split("|");
+                        question = correctAnswer[0]
+                        correctAnswer = correctAnswer[1];
+                        console.log(correctAnswer);
+                        console.log(question);
+                    } else {
+                        let correctAnswer = eval(question);
+                    }
+                }
+                catch (error) {
+                    console.error(error);
                 }
                 questions.push({
                     text: question,
