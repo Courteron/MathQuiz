@@ -313,12 +313,12 @@
                 divisions = 1;
                 first_equation = generate_calculation();
                 equation_solving = 1;
-                let additions = old_add;
-                let substractions = old_sub;
-                let multiplications = old_mult;
-                let divisions = old_div;
+                additions = old_add;
+                substractions = old_sub;
+                multiplications = old_mult;
+                divisions = old_div;
                 let result = eval(first_equation);
-                let myresult = first_equation.match(/^(\d+)([+*/-])(\d+)$/);
+                let myresult = first_equation.replace(" ", "").match(/^(\d+)([+*/-])(\d+)$/);
                 let real_result = myresult[0];
                 myresult[0] = "x"
                 return myresult + "=" + myresult.join("") + "|" + real_result
@@ -368,9 +368,12 @@
             for (let i = 0; i < question_number; i++) {
                 try {
                     question = generate_calculation();
+                    if (!question) throw new Error("question vide");
                 }
                 catch (error) {
                     console.error(error);
+                    i--;
+                    continue ;
                 }
                 console.log("Generated question: " + question);
                 try {
