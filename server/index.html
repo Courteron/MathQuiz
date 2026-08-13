@@ -318,7 +318,7 @@
                 multiplications = old_mult;
                 divisions = old_div;
                 let result = eval(first_equation);
-                let myresult = first_equation.replace(" ", "").match(/^(\d+)([+*/-])(\d+)$/);
+                let myresult = first_equation.replace(/\s+/g, "").match(/^(\d+)([+*/-])(\d+)$/);
                 let real_result = myresult[0];
                 myresult[0] = "x"
                 return myresult + "=" + myresult.join("") + "|" + real_result
