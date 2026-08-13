@@ -5,6 +5,7 @@
     <title>MathQuiz</title>
 
     <script src=" https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js "></script>
+    // Should use render in the future to deploy everything
     <script>
 
         let additions = 0;
@@ -225,7 +226,7 @@
             if (hdiv) hdiv.style.display = 'block';
             generate_question_list();
 
-            new QRCode(document.getElementById("qrcode"), window.location.href + "mobile/index.html");
+            new QRCode(document.getElementById("qrcode"), window.location.href + "mobile/index.html?code=" + Gamecode);
 
         }
         function generate_calculation() {
@@ -235,6 +236,7 @@
             if (substractions) types.push("sub");
             if (multiplications) types.push("multi");
             if (divisions) types.push("div");
+            if (equation_solving) types.push("equa");
 
             if (types.length === 0) {
                 console.log("No calculation available");
@@ -293,6 +295,16 @@
                 console.log(`Division: ${b} ${op} ${a}`);
                 return `${b} ${op} ${a}`;
             }
+            if (type == "equa") {
+                equation_solving = 0;
+                first_equation = generate_calculation();
+                equation_solving = 1;
+                let result = eval(first_equation);
+                let myresult = first_equation.match(/^(\d+)([+*/-])(\d+)$/);
+                let real_result = myresult[0];
+                myresult[0] = "x"
+                return myresult + "=" + myresult.join("") + "|" + real_result
+            }
         }
         function generate_fake_result(correctAnswer) {
             const choices = new Set();
@@ -336,7 +348,13 @@
             for (let i = 0; i < question_number; i++) {
                 let question = generate_calculation();
                 console.log("Generated question: " + question);
-                let correctAnswer = eval(question);
+                if ("|" in question) {
+                    let correctAnswer = question.split("|");
+                    question = correctAnswer[0]
+                    correctAnswer = correctAnswer[1];
+                } else {
+                    let correctAnswer = eval(question);
+                }
                 questions.push({
                     text: question,
                     choices: generate_fake_result(correctAnswer),
@@ -444,8 +462,8 @@
                         break;
                         return 0;
                     }
-                }else {
-                    if (!((Date.now() - value.epoch) > minutes*60*1000)){
+                } else {
+                    if (!((Date.now() - value.epoch) > minutes * 60 * 1000)) {
                         all_finished = false;
                         break;
                         return 0;
@@ -551,12 +569,12 @@
                         console.log("Player answered: ", data.pseudo, " with answer: ", data.answer, " correct: ", data.correct);
                         const user = progression.get(data.pseudo);
                         if (!playing_with_q_number) {
-                            console.log("We are playing with minutes. Users currently have " + minutes*60 + " seconds to answer maximum of correct questions");
+                            console.log("We are playing with minutes. Users currently have " + minutes * 60 + " seconds to answer maximum of correct questions");
                             console.log("Time will be less counted than number of correct questions.");
                             console.log(user.epoch);
                             console.log(Date.now());
                             console.log(data.pseudo + " is curently at " + (Date.now() - user.epoch) + " seconds of game");
-                            if (Date.now() - user.epoch > minutes * 60*1000) {
+                            if (Date.now() - user.epoch > minutes * 60 * 1000) {
                                 console.log("Unfortunately for him, time is over, this question cannot be counted");
                             } else {
                                 console.log("Great, just in time");
@@ -1704,8 +1722,14 @@
         <h1>MathQuiz</h1>
         <br>
         <div id="up">
-            <button id="ngame" onclick="displaySelector()" class="glow-on-hover">Create a new game</button>
-            <button id="join-game" class="glow-on-hover">Join a game</button>
+            <h1>Welcome on MathQuiz, pirate !</h1>
+            <h2> What would you like to do ?</h2>
+            <div id="choice">
+                <button id="log_in">Log in (Not implemented yet)</button>
+                <button id="sign_up">Sign up (Not yet implemented)</button>
+                <button id="ngame" onclick="displaySelector()" class="glow-on-hover">Familly game</button>
+                <button id="join-game" class="glow-on-hover">Join a game</button>
+            </div>
         </div>
         <div id="game_joining_form">
             <form id="game_joining_code">

@@ -9,31 +9,18 @@ const path = require('path');
 const app = express();
 const port = 8080;
 
-// Middlewares pour les fichiers statiques (inchangé)
+
 app.use('/', express.static('server'));
 app.use('/assets', express.static('assets'));
 
-// Créer le serveur HTTP (inchangé)
+
 const server = http.createServer(app);
 
-// --- WebSocket branché sur le MÊME serveur HTTP / MÊME port ---
 const wss = new WebSocketServer({ server });
 
-// ---------------------------------------------------------------
-// État global
-// ---------------------------------------------------------------
-
-// Métadonnées par connexion WebSocket (indépendant de la partie).
-// ws -> { id, gameId, pseudo, role: 'client' | 'master' | null }
 const connections = new Map();
 
-// NOUVEAU : toutes les parties en cours.
-// gameId -> {
-//   masterWs,
-//   gameStarted,
-//   clients: Map(ws -> meta)   // uniquement les clients de CETTE partie
-//   currentQuestions: Map(pseudo -> question) // par joueur, pour CETTE partie
-// }
+
 const games = new Map();
 
 function getGame(gameId) {
