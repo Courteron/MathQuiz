@@ -409,7 +409,7 @@
                     } else if (question.includes("<!!!>")) {
                         correctAnswer = question.split("<!!!>");
                         question = correctAnswer[0];
-                        answers = correctAnswer[1];
+                        answers = correctAnswer[1].split(",");;
                         correctAnswer = correctAnswer[2];
 
                     } else {
