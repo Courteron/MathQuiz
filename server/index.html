@@ -31,13 +31,15 @@
 
 
         const math_general_questions = [
-            {'question': "Who invented the theorem that's used to calculate the hypotenuse of a triangle ?",
-             'answers': ["Pythagore", "Thales", "Euclide"],
-             'correct_ans': "Pythagore",   
+            {
+                'question': "Who invented the theorem that's used to calculate the hypotenuse of a triangle ?",
+                'answers': ["Pythagore", "Thales", "Euclide"],
+                'correct_ans': "Pythagore",
             },
-            {'question': "What is the Thales theorem used for ?",
-             'answers': ["Calculate an area", "Calculate lengths", "Calculate volume"],
-             'correct_ans': "Calculate_lengths",   
+            {
+                'question': "What is the Thales theorem used for ?",
+                'answers': ["Calculate an area", "Calculate lengths", "Calculate volume"],
+                'correct_ans': "Calculate_lengths",
             },
         ];
         for (i = 1; i <= 6; i++) {
@@ -46,7 +48,7 @@
         const audioElement = new Audio("assets/music" + music_id + ".mp3");
 
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById("inputgameCode").textContent = "Or go on " + window.location.href + " , select join with code and enter  code :<b> " + Gamecode + "</b>";
+            document.getElementById("inputgameCode").textContent = "Or go on " + window.location.href + " , select join with code and enter  code :" + Gamecode + "";
             connect();
 
             const selectParamButtons = document.querySelectorAll('.selectparam');
@@ -234,20 +236,15 @@
                 "music": music_id,
                 "QCM": QCM
             });
-            console.log("This log should appear #3");
             const div = document.getElementById("ToHide");
             if (div) div.style.display = 'none';
-            console.log("This log should appear #4");
             const hdiv = document.getElementById("players");
             if (hdiv) hdiv.style.display = 'block';
-            console.log("This log should appear #5");
             generate_question_list();
-            console.log("This log should appear #6");
             new QRCode(
                 document.getElementById("qrcode"),
                 `${window.location.origin}/mobile/index.html?code=${Gamecode}`
             );
-            console.log("This log should appear #7");
         }
         function generate_calculation() {
             const types = [];
@@ -344,7 +341,7 @@
                 console.log("Final : ", result + "= x " + myresult[2] + " " + myresult[3] + "|" + realresult);
                 return result + "= x " + myresult[2] + " " + myresult[3] + "|" + realresult;
             }
-            if (type=="genQ"){
+            if (type == "genQ") {
                 const genQQ = math_general_questions[Math.floor(Math.random() * math_general_questions.length)];
                 return genQQ.question + "<!!!>" + genQQ.answers + "<!!!>" + genQQ.correct_ans;
             }
@@ -399,7 +396,7 @@
                 catch (error) {
                     console.error(error);
                     i--;
-                    continue ;
+                    continue;
                 }
                 console.log("Generated question: " + question);
                 try {
@@ -409,31 +406,31 @@
                         correctAnswer = Number(correctAnswer[1]);
                         console.log(correctAnswer);
                         console.log(question);
-                    } else if (question.includes("<!!!>")){
+                    } else if (question.includes("<!!!>")) {
                         correctAnswer = question.split("<!!!>");
                         question = correctAnswer[0];
                         answers = correctAnswer[1];
                         correctAnswer = correctAnswer[2];
 
-                    }else {
+                    } else {
                         correctAnswer = eval(question);
                     }
                 }
                 catch (error) {
                     console.error(error);
                 }
-                if (answers!=[]){
-                questions.push({
-                    text: question,
-                    choices: answers,
-                    correctAnswer: correctAnswer,
-                });
-                }else {
-                questions.push({
-                    text: question,
-                    choices: generate_fake_result(correctAnswer),
-                    correctAnswer: correctAnswer,
-                });
+                if (answers != []) {
+                    questions.push({
+                        text: question,
+                        choices: answers,
+                        correctAnswer: correctAnswer,
+                    });
+                } else {
+                    questions.push({
+                        text: question,
+                        choices: generate_fake_result(correctAnswer),
+                        correctAnswer: correctAnswer,
+                    });
                 }
             }
         }
@@ -441,15 +438,19 @@
             const user = progression.get(to_someone);
             let question = questions[user.answered];
             console.log("Sending question: " + question.text + " with correct answer: " + question.correctAnswer);
-
-            socket.send(JSON.stringify({
-                type: "send_question",
-                to_pseudo: to_someone,
-                text: question.text,
-                choices: question.choices,
-                correctAnswer: question.correctAnswer,
-                game_id: Gamecode
-            }));
+            try {
+                socket.send(JSON.stringify({
+                    type: "send_question",
+                    to_pseudo: to_someone,
+                    text: question.text,
+                    choices: question.choices,
+                    correctAnswer: question.correctAnswer,
+                    game_id: Gamecode
+                }));
+            }
+            catch (error) {
+                console.error(error);
+            }
         }
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("param52").addEventListener("click", () => {
