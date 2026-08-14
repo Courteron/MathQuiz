@@ -46,7 +46,7 @@
         const audioElement = new Audio("assets/music" + music_id + ".mp3");
 
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById("inputgameCode").textContent = "Or go on " + window.location.href + " , select join with code and enter  code : " + Gamecode;
+            document.getElementById("inputgameCode").textContent = "Or go on " + window.location.href + " , select join with code and enter  code :<b> " + Gamecode + "</b>";
             connect();
 
             const selectParamButtons = document.querySelectorAll('.selectparam');
@@ -412,8 +412,8 @@
                     } else if (question.includes("<!!!>")){
                         correctAnswer = question.split("<!!!>");
                         question = correctAnswer[0];
-                        answers = correctAnswer[2];
-                        correctAnswer = correctAnswer[1];
+                        answers = correctAnswer[1];
+                        correctAnswer = correctAnswer[2];
 
                     }else {
                         correctAnswer = eval(question);
