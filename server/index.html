@@ -26,8 +26,20 @@
         let music_id = 1;
         let questions = [];
         let Gamecode = "";
+        let math_gen_question = 0;
         const char_list = ["A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P", "Q", "S", "D", "F", "G", "H", "J", "K", "L", "M", "W", "X", "C", "V", "B", "N", "-"];
 
+
+        const math_general_questions = [
+            {'question': "Who invented the theorem that's used to calculate the hypotenuse of a triangle ?",
+             'answers': ["Pythagore", "Thales", "Euclide"],
+             'correct_ans': "Pythagore",   
+            },
+            {'question': "What is the Thales theorem used for ?",
+             'answers': ["Calculate an area", "Calculate lengths", "Calculate volume"],
+             'correct_ans': "Calculate_lengths",   
+            },
+        ];
         for (i = 1; i <= 6; i++) {
             Gamecode = Gamecode + char_list[Math.floor(Math.random() * char_list.length)];
         }
@@ -142,6 +154,9 @@
                             case 4:
                                 simple_pythagore = 1;
                                 break;
+                            case 5:
+                                math_gen_question = 1;
+                                break;
                             case 6:
                                 QCM = 1;
                                 break;
@@ -242,6 +257,7 @@
             if (multiplications) types.push("multi");
             if (divisions) types.push("div");
             if (equation_solving) types.push("equa");
+            if (math_gen_question) types.push('genQ');
 
             if (types.length === 0) {
                 console.log("No calculation available");
@@ -307,16 +323,19 @@
                 let old_sub = substractions;
                 let old_mult = multiplications;
                 let old_div = divisions;
+                let old_math_genQ = math_gen_question;
                 additions = 1;
                 substractions = 1;
                 multiplications = 1;
                 divisions = 1;
+                math_gen_question = 0
                 first_equation = generate_calculation();
                 equation_solving = 1;
                 additions = old_add;
                 substractions = old_sub;
                 multiplications = old_mult;
                 divisions = old_div;
+                math_gen_question = old_div;
                 let result = eval(first_equation);
                 let myresult = first_equation.replace(/\s+/g, "").match(/^(\d+)([+*/-])(\d+)$/);
                 let realresult = myresult[1];
@@ -324,6 +343,10 @@
                 myresult[1] = "x"
                 console.log("Final : ", result + "= x " + myresult[2] + " " + myresult[3] + "|" + realresult);
                 return result + "= x " + myresult[2] + " " + myresult[3] + "|" + realresult;
+            }
+            if (type=="genQ"){
+                const genQQ = math_general_questions[Math.floor(Math.random() * math_general_questions.length)];
+                return genQQ.question + "<!!!>" + genQQ.answers + "<!!!>" + genQQ.correct_ans;
             }
         }
         function generate_fake_result(correctAnswer) {
@@ -367,6 +390,7 @@
             questions = [];
             let question = "";
             let correctAnswer = 0;
+            let answers = [];
             for (let i = 0; i < question_number; i++) {
                 try {
                     question = generate_calculation();
@@ -379,24 +403,39 @@
                 }
                 console.log("Generated question: " + question);
                 try {
+                    return genQQ.question + "<!!!>" + genQQ.answers + "<!!!>" + genQQ.correct_ans;
                     if (question.includes("|")) {
                         correctAnswer = question.split("|");
                         question = correctAnswer[0]
                         correctAnswer = Number(correctAnswer[1]);
                         console.log(correctAnswer);
                         console.log(question);
-                    } else {
+                    } else if (question.includes("<!!!>")){
+                        correctAnswer = question.split("<!!!>");
+                        question = correctAnswer[0];
+                        answers = correctAnswer[2];
+                        correctAnswer = correctAnswer[1];
+
+                    }else {
                         correctAnswer = eval(question);
                     }
                 }
                 catch (error) {
                     console.error(error);
                 }
+                if (answers!=[]){
+                questions.push({
+                    text: question,
+                    choices: answers,
+                    correctAnswer: correctAnswer,
+                });
+                }else {
                 questions.push({
                     text: question,
                     choices: generate_fake_result(correctAnswer),
                     correctAnswer: correctAnswer,
                 });
+                }
             }
         }
         function send_question(to_someone) {
@@ -1806,6 +1845,7 @@
             <h4>Additional operations</h4>
             <button id="param3" onclick="selectParam('param3')">Equation solving</button>
             <button id="param4" onclick="selectParam('param4')">Simple pythagore</button>
+            <button id="param5" onclick="selectParam('param5')">Math general knowledge</button>
             <h4>Sound effects</h4>
             <button id="param51" onclick="selectParam('param51')">Enable fail/win sounds</button>
             <button id="param52" onclick="selectParam('param52')">Kahoot music #1</button>
