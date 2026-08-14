@@ -403,7 +403,6 @@
                 }
                 console.log("Generated question: " + question);
                 try {
-                    return genQQ.question + "<!!!>" + genQQ.answers + "<!!!>" + genQQ.correct_ans;
                     if (question.includes("|")) {
                         correctAnswer = question.split("|");
                         question = correctAnswer[0]
