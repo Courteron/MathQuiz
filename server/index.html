@@ -513,6 +513,9 @@
             let question = "";
             let correctAnswer = 0;
             let answers = [];
+            if (!playing_with_q_number){
+                question_number = 1000;
+            }
             for (let i = 0; i < question_number; i++) {
                 try {
                     question = generate_calculation();
