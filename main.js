@@ -180,7 +180,6 @@ wss.on('connection', (ws) => {
         };
         game.currentQuestions.set(data.to_pseudo, question);
         console.log(question.choices);
-        console.log(...publicQuestion(question));
         console.log(`[${info.gameId}] Nouvelle question envoyée à ${data.to_pseudo} : ${question.id}`);
         broadcastToSingleClient(game, data.to_pseudo, { type: 'question', ...publicQuestion(question) });
         break;
