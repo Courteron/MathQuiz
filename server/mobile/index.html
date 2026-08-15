@@ -964,21 +964,26 @@
 
       // ---------- Rendu d'une question ----------
       function renderQuestion(data) {
-        currentQuestionId = data.id ?? null;
-        questionText.textContent = data.text || '';
-        choicesBox.innerHTML = '';
-        answerFeedback.textContent = '';
+        try {
+          currentQuestionId = data.id ?? null;
+          questionText.textContent = data.text || '';
+          choicesBox.innerHTML = '';
+          answerFeedback.textContent = '';
 
-        (data.choices || []).forEach((choice) => {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'choice-btn';
-          btn.textContent = choice;
-          btn.addEventListener('click', () => submitAnswer(choice, btn));
-          choicesBox.appendChild(btn);
-        });
+          (data.choices || []).forEach((choice) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'choice-btn';
+            btn.textContent = choice;
+            btn.addEventListener('click', () => submitAnswer(choice, btn));
+            choicesBox.appendChild(btn);
+          });
 
-        showView(questionView);
+          showView(questionView);
+        }
+        catch (error) {
+          console.error(error);
+        }
       }
       let got_answer = false;
       function submitAnswer(answer, btnEl) {
