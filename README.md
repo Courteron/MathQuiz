@@ -1,1 +1,4 @@
-Just a simple math quiz that you can play with your friends or family
+#MathQuiz  - A way to learn maths
+
+## Legal
+### I 'borrowed' some content of some websites, mainly graphical elements of  "Je peux pas j'ai maths" (jepeuxpasjaimaths.fr - ARSAC Benjamin.)
