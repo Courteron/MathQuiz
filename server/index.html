@@ -521,6 +521,7 @@
             }
             let question_is_text = 0;
             for (let i = 0; i < question_number; i++) {
+                question_is_text = 0;
                 try {
                     question = generate_calculation();
                     if (!question) throw new Error("question vide");
