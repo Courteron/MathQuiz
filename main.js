@@ -1,10 +1,10 @@
 // server.js
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
-const { exec } = require('child_process');
-const path = require('path');
+const { spawn } = require('child_process');
 
 const app = express();
 const port = 8080;
@@ -17,6 +17,7 @@ app.use('/assets', express.static('assets'));
 const server = http.createServer(app);
 
 const wss = new WebSocketServer({ server });
+wss.on('error', (err) => console.error('Erreur WebSocketServer:', err.message));
 
 const connections = new Map();
 
@@ -101,6 +102,12 @@ wss.on('connection', (ws) => {
   const meta = { id, gameId: null, pseudo: null, role: null };
   connections.set(ws, meta);
   console.log(`Nouvelle connexion WebSocket (${id})`);
+
+  // Sans ce handler, une erreur socket (coupure réseau brutale, etc.) fait
+  // planter tout le process Node (EventEmitter 'error' non écouté).
+  ws.on('error', (err) => {
+    console.error(`Erreur WebSocket (${id}):`, err.message);
+  });
 
   ws.on('message', (raw) => {
     let data;
@@ -191,6 +198,9 @@ wss.on('connection', (ws) => {
           send(ws, { type: 'error', message: 'Seul le maître de cette partie peut la terminer.' });
           return;
         }
+        // Idempotent : évite un double broadcast si le master déclenche
+        // end_game deux fois (ex: check réactif + minuteur de sécurité).
+        if (!game.gameStarted) return;
         game.gameStarted = false;
         game.currentQuestions.clear(); // on vide toutes les questions en cours de CETTE partie
         console.log(`Partie ${info.gameId} terminée par le master`);
@@ -205,8 +215,20 @@ wss.on('connection', (ws) => {
           send(ws, { type: 'error', message: 'pseudo nécessite game_id.' });
           return;
         }
+        if (!data.pseudo || !data.pseudo.trim()) {
+          send(ws, { type: 'error', message: 'pseudo ne peut pas être vide.' });
+          return;
+        }
 
         const game = getOrCreateGame(data.game_id);
+
+        const pseudoTaken = [...game.clients.values()].some(
+          (c) => c.pseudo === data.pseudo && c.id !== info.id
+        );
+        if (pseudoTaken) {
+          send(ws, { type: 'pseudo_taken', pseudo: data.pseudo });
+          return;
+        }
 
         info.pseudo = data.pseudo;
         info.gameId = data.game_id;
@@ -313,21 +335,62 @@ wss.on('connection', (ws) => {
 });
 
 // ---------------------------------------------------------------
-// Démarrage du serveur (inchangé, y compris le lancement de ngrok)
+// Démarrage du serveur + tunnel ngrok (binaire ngrok du PATH,
+// piloté via l'API locale http://127.0.0.1:4040/api/tunnels)
 // ---------------------------------------------------------------
 
-server.listen(port, () => {
+function fetchNgrokUrl(retries = 20) {
+    return new Promise((resolve, reject) => {
+        const attempt = (remaining) => {
+            http.get('http://127.0.0.1:4040/api/tunnels', (res) => {
+                let body = '';
+                res.on('data', (chunk) => { body += chunk; });
+                res.on('end', () => {
+                    try {
+                        const data = JSON.parse(body);
+                        const tunnel = data.tunnels.find((t) => t.proto === 'https') || data.tunnels[0];
+                        if (!tunnel) throw new Error('Aucun tunnel actif');
+                        resolve(tunnel.public_url);
+                    } catch (err) {
+                        if (remaining <= 0) return reject(err);
+                        setTimeout(() => attempt(remaining - 1), 500);
+                    }
+                });
+            }).on('error', (err) => {
+                if (remaining <= 0) return reject(err);
+                setTimeout(() => attempt(remaining - 1), 500);
+            });
+        };
+        attempt(retries);
+    });
+}
+
+server.listen(port, async () => {
     console.log(`Serveur démarré sur http://localhost:${port}`);
 
-    const ngrokPath = 'C:\\Users\\Louis\\AppData\\Local\\Microsoft\\WindowsApps\\ngrok.exe';
-    const ngrokProcess = exec(`${ngrokPath} http ${port}`, (error, stdout, stderr) => {
-        if (error) { console.error('Erreur ngrok:', error.message); return; }
-        if (stderr) { console.error('Erreur ngrok (stderr):', stderr); return; }
-        console.log('URL ngrok:', stdout);
-    });
+    if (!process.env.NGROK_AUTHTOKEN) {
+        console.warn('NGROK_AUTHTOKEN non défini (.env) : tunnel ngrok non démarré.');
+        return;
+    }
 
-    ngrokProcess.stdout.on('data', (data) => console.log(`ngrok: ${data}`));
-    ngrokProcess.stderr.on('data', (data) => console.error(`ngrok stderr: ${data}`));
+    const ngrokProcess = spawn('ngrok', [
+        'http', String(port),
+        `--authtoken=${process.env.NGROK_AUTHTOKEN}`,
+        '--log=stdout',
+    ]);
+
+    ngrokProcess.on('error', (err) => {
+        console.error('Impossible de lancer ngrok (binaire absent du PATH ?) :', err.message);
+    });
+    ngrokProcess.stdout.on('data', (data) => console.log(`ngrok: ${data}`.trim()));
+    ngrokProcess.stderr.on('data', (data) => console.error(`ngrok: ${data}`.trim()));
+
+    try {
+        const url = await fetchNgrokUrl();
+        console.log(`URL ngrok: ${url}`);
+    } catch (error) {
+        console.error('Erreur ngrok:', error.message);
+    }
 });
 
 process.on('uncaughtException', (err) => {

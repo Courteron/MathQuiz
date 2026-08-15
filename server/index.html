@@ -15,8 +15,6 @@
         let simple_pythagore = 0;
         let under_hundred = 0;
         let under_thousand = 0;
-        let no_decimals = 0;
-        let QCM = 0;
         let simple_numbers = 0;
         let progression = new Map();    // Map with progression of players key = pseudo then number of correct answers, number of questions answered, number of questions answered correctly in a row
         let playing_with_q_number = 1;
@@ -27,6 +25,8 @@
         let questions = [];
         let Gamecode = "";
         let math_gen_question = 0;
+        let minutesModeInterval = null;
+        let gameHasEnded = false;
         const char_list = ["A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P", "Q", "S", "D", "F", "G", "H", "J", "K", "L", "M", "W", "X", "C", "V", "B", "N", "-"];
 
 
@@ -176,40 +176,6 @@
             document.getElementById("inputgameCode").textContent = "Or go on " + window.location.href + " , select join with code and enter  code :" + Gamecode + "";
             connect();
 
-            const selectParamButtons = document.querySelectorAll('.selectparam');
-
-            selectParamButtons.forEach((button) => {
-                button.addEventListener('click', () => {
-                    button.style.backgroundColor = 'green';
-                });
-            });
-            const ngameButtons = document.querySelectorAll('ngame');
-
-            ngameButtons.forEach((button) => {
-                button.addEventListener('click', () => {
-                    const ngameparamdiv = document.getElementById("params");
-                    if (ngameparamdiv) ngameparamdiv.style.display = 'block';
-                });
-            });
-            const startgameButton = document.querySelectorAll('startbtn');
-            /*
-                        startgameButton.forEach((button) => {
-                            button.addEventListener('click', () => {
-                                const tohidediv = document.getElementById("ToHide");
-                                if (tohidediv) tohidediv.style.display = 'none';
-                                const playerdiv = document.getElementById("players");
-                                if (playerdiv) playerdiv.style.display = 'block';
-            
-                                const char_list = ["A","Z","E","R","T","Y","U","I","O","P","Q","S","D","F","G","H","J","K","L","M","W","X","C","V","B","N","?","/","-"];
-                                let Gamecode = "";
-                                for (i=1; i<=6; i++){
-                                    let Gamecode = Gamecode + list[Math.floor(Math.random() * list.length)];
-                                }
-                                document.getElementById("inputgameCode").textContent = "Or go on " + windows.location.href + " , select join with code and enter  code : " + Gamecode;
-                                new QRCode(document.getElementById("qrcode"), document.getElementById("qrcode"), window.location.href + "mobile/index.html?code=" + Gamecode);
-                            });
-                        });
-            */
             document.getElementById("join-game").addEventListener("click", () => {
                 const up_form = document.getElementById("up");
                 if (up_form) up_form.style.display = 'none';
@@ -219,9 +185,7 @@
             document.getElementById("game_joining_form").addEventListener("submit", (event) => {
                 event.preventDefault();
                 const formData = new FormData(event.target);
-                window.location.href = window.location.href + "/mobile/index.html?code=" + formData.get("input_code");
-                const game_joining_form = document.getElementById("game_joining_form");
-                if (game_joining_form) game_joining_form.style.display = 'none';
+                window.location.href = `${window.location.origin}/mobile/index.html?code=${encodeURIComponent(formData.get("input_code"))}`;
             });
         });
 
@@ -239,6 +203,12 @@
                     for (let i = 52; i <= 57; i++) {
                         document.getElementById("param" + i).style.backgroundColor = 'blue';
                     }
+                }
+                // "Under a hundred" et "Under a thousand" sont mutuellement exclusifs
+                // (getnumber_for_calculation() ne peut appliquer qu'une seule limite).
+                if (["param21", "param24"].includes(id)) {
+                    document.getElementById("param21").style.backgroundColor = 'blue';
+                    document.getElementById("param24").style.backgroundColor = 'blue';
                 }
                 if (btn.style.backgroundColor === 'green') {
                     btn.style.backgroundColor = 'blue';
@@ -284,9 +254,6 @@
                             case 5:
                                 math_gen_question = 1;
                                 break;
-                            case 6:
-                                QCM = 1;
-                                break;
                             case 21:
                                 under_hundred = 1;
                                 break;
@@ -295,9 +262,6 @@
                                 break;
                             case 22:
                                 simple_numbers = 1;
-                                break;
-                            case 23:
-                                no_decimals = 1;
                                 break;
                             case 32:
                                 playing_with_q_number = 1;
@@ -361,8 +325,19 @@
                 "under_thousand": under_thousand,
                 "simple_numbers": simple_numbers,
                 "music": music_id,
-                "QCM": QCM
             });
+
+            // Sans au moins un type de calcul actif, generate_question_list()
+            // ne peut produire aucune question et boucle indéfiniment (tab gelé).
+            const hasCalculationType = additions || substractions || multiplications ||
+                divisions || equation_solving || math_gen_question || simple_pythagore;
+            const startWarning = document.getElementById("startWarning");
+            if (!hasCalculationType) {
+                if (startWarning) startWarning.textContent = "Sélectionne au moins un type de calcul avant de démarrer !";
+                return;
+            }
+            if (startWarning) startWarning.textContent = "";
+
             const div = document.getElementById("ToHide");
             if (div) div.style.display = 'none';
             const hdiv = document.getElementById("players");
@@ -382,6 +357,7 @@
             if (divisions) types.push("div");
             if (equation_solving) types.push("equa");
             if (math_gen_question) types.push('genQ');
+            if (simple_pythagore) types.push('pyth');
 
             if (types.length === 0) {
                 console.log("No calculation available");
@@ -459,7 +435,7 @@
                 substractions = old_sub;
                 multiplications = old_mult;
                 divisions = old_div;
-                math_gen_question = old_div;
+                math_gen_question = old_math_genQ;
                 let result = eval(first_equation);
                 let myresult = first_equation.replace(/\s+/g, "").match(/^(\d+)([+*/-])(\d+)$/);
                 let realresult = myresult[1];
@@ -467,6 +443,17 @@
                 myresult[1] = "x"
                 console.log("Final : ", result + "= x " + myresult[2] + " " + myresult[3] + "|" + realresult);
                 return result + "= x " + myresult[2] + " " + myresult[3] + "|" + realresult;
+            }
+            if (type === "pyth") {
+                // Triplets pythagoriciens connus, mis à l'échelle pour varier la difficulté.
+                const triples = [[3, 4, 5], [6, 8, 10], [5, 12, 13], [8, 15, 17], [7, 24, 25], [9, 12, 15], [20, 21, 29]];
+                const [legA, legB, hyp] = triples[Math.floor(Math.random() * triples.length)];
+                const scale = Math.floor(Math.random() * 3) + 1;
+                const sideA = legA * scale;
+                const sideB = legB * scale;
+                const hypotenuse = hyp * scale;
+                console.log(`Pythagore: ${sideA}² + ${sideB}² = ${hypotenuse}²`);
+                return `Un triangle rectangle a des côtés de ${sideA} et ${sideB}. Quelle est la longueur de son hypoténuse ?|${hypotenuse}`;
             }
             if (type == "genQ") {
                 const genQQ = math_general_questions[Math.floor(Math.random() * math_general_questions.length)];
@@ -520,14 +507,23 @@
                 question_number = 1000;
             }
             let question_is_text = 0;
+            let consecutiveFailures = 0;
             for (let i = 0; i < question_number; i++) {
                 question_is_text = 0;
                 try {
                     question = generate_calculation();
                     if (!question) throw new Error("question vide");
+                    consecutiveFailures = 0;
                 }
                 catch (error) {
                     console.error(error);
+                    // Filet de sécurité : si aucun type de calcul ne peut produire de
+                    // question, on arrête au lieu de boucler indéfiniment (tab gelé).
+                    consecutiveFailures++;
+                    if (consecutiveFailures > 1000) {
+                        console.error("Impossible de générer des questions, arrêt.");
+                        break;
+                    }
                     i--;
                     continue;
                 }
@@ -590,32 +586,32 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("param52").addEventListener("click", () => {
                 audioElement.src = "assets/music1.mp3"
-                audioElement.play();
+                audioElement.play().catch(() => {});
                 audioElement.loop = true;
             });
             document.getElementById("param53").addEventListener("click", () => {
                 audioElement.src = "assets/music2.mp3"
-                audioElement.play();
+                audioElement.play().catch(() => {});
                 audioElement.loop = true;
             });
             document.getElementById("param54").addEventListener("click", () => {
                 audioElement.src = "assets/music3.mp3"
-                audioElement.play();
+                audioElement.play().catch(() => {});
                 audioElement.loop = true;
             });
             document.getElementById("param55").addEventListener("click", () => {
                 audioElement.src = "assets/music4.mp3"
-                audioElement.play();
+                audioElement.play().catch(() => {});
                 audioElement.loop = true;
             });
             document.getElementById("param56").addEventListener("click", () => {
                 audioElement.src = "assets/music5.mp3"
-                audioElement.play();
+                audioElement.play().catch(() => {});
                 audioElement.loop = true;
             });
             document.getElementById("param57").addEventListener("click", () => {
                 audioElement.src = "assets/music6.mp3"
-                audioElement.play();
+                audioElement.play().catch(() => {});
                 audioElement.loop = true;
             });
 
@@ -628,6 +624,12 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("startGameBtn").addEventListener("click", () => {
+                const startGameWarning = document.getElementById("startGameWarning");
+                if (progression.size === 0) {
+                    if (startGameWarning) startGameWarning.textContent = "Attends qu'au moins un joueur rejoigne la partie !";
+                    return;
+                }
+                if (startGameWarning) startGameWarning.textContent = "";
                 socket.send(JSON.stringify({
                     type: "start_game",
                     music_id: music_id,
@@ -636,34 +638,54 @@
 
                 const hdiv = document.getElementById("players");
                 if (hdiv) hdiv.style.display = 'none';
-                const thediv = document.getElementById("question_dev");
-                if (thediv) thediv.style.display = 'none';
-                const theform = document.getElementById("question_dev_form");
-                if (theform) theform.style.display = 'none';
                 const board = document.getElementById("billboard");
                 if (board) board.style.display = 'block';
                 setTimeout(() => {
                     for (const [key, value] of progression.entries()) {
                         value.epoch = Date.now();
-                        console.log("Sending question to: " + key);
-                        send_question(key);
 
-                        document.getElementById("sea").innerHTML += `
+                        // Le bateau doit exister AVANT le premier envoi de question :
+                        // une réponse trop rapide pourrait sinon chercher un élément
+                        // DOM qui n'existe pas encore.
+                        const sea = document.getElementById("sea");
+                        if (sea) {
+                            sea.insertAdjacentHTML('beforeend', `
                                 <div id="ship-${key}" class="ship" aria-hidden="true">
                                     ⛵
                                     <div id="ship-crew-${key}" class="ship-crew" tabindex="0" role="img"
-                                        aria-label="${key}, 55% of the race">
+                                        aria-label="${escapeHtml(key)}, 0% of the race">
                                         👤
-                                        <span class="crew-tooltip">${key} — 0% of the race</span>
+                                        <span class="crew-tooltip">${escapeHtml(key)} — 0% of the race</span>
                                     </div>
-                                </div>`;
+                                </div>`);
+                        }
+
+                        console.log("Sending question to: " + key);
+                        send_question(key);
                     }
                 }, 2000);
+
+                if (!playing_with_q_number) {
+                    // Filet de sécurité : en mode minuteur, verify_game_ended() n'est
+                    // sinon vérifié que quand quelqu'un répond. Si le dernier joueur
+                    // actif n'envoie plus rien après la fin de son temps, la partie ne
+                    // se terminerait jamais côté maître.
+                    minutesModeInterval = setInterval(() => {
+                        if (verify_game_ended()) {
+                            clearInterval(minutesModeInterval);
+                            onGameEnded();
+                        }
+                    }, 3000);
+                }
             });
 
         });
 
         function verify_game_ended() {
+            // Le check réactif (à chaque réponse) et le minuteur de sécurité en
+            // mode minutes peuvent tous deux détecter la fin de partie : on ne
+            // veut déclencher end_game qu'une seule fois.
+            if (gameHasEnded || progression.size === 0) return 0;
 
             let all_finished = true;
             for (const [key, value] of progression.entries()) {
@@ -671,18 +693,17 @@
                     if (value.answered < question_number) {
                         all_finished = false;
                         break;
-                        return 0;
                     }
                 } else {
                     if (!((Date.now() - value.epoch) > minutes * 60 * 1000)) {
                         all_finished = false;
                         break;
-                        return 0;
                     }
                 }
             }
             if (all_finished) {
                 console.log("All players finished the game");
+                gameHasEnded = true;
                 socket.send(JSON.stringify({
                     type: "end_game",
                     game_id: Gamecode,
@@ -690,23 +711,29 @@
                 }));
                 return 1;
             }
+            return 0;
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById("question_dev_form").addEventListener("submit", (event) => {
-                event.preventDefault();
-                const formData = new FormData(event.target);
+        function onGameEnded() {
+            console.log("Game ended");
+            if (minutesModeInterval) {
+                clearInterval(minutesModeInterval);
+                minutesModeInterval = null;
+            }
+            const sea = document.getElementById("sea");
+            if (sea) sea.style.display = "none";
+            const title = document.getElementById("title_finished");
+            if (title) title.textContent = "It's finished, heres the score";
+            audioElement.src = "assets/finished.mp3"
+            audioElement.play();
+            audioElement.loop = false;
+        }
 
-                socket.send(JSON.stringify({
-                    type: "send_question",
-                    text: formData.get("question"),
-                    choices: [formData.get("a1").replace("*", "x"), formData.get("a2").replace("*", "x"), formData.get("a3").replace("*", "x")],
-                    correctAnswer: formData.get("answer"),
-                    game_id: Gamecode
-                }));
-            });
-
-        });
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = String(str);
+            return div.innerHTML;
+        }
 
         function buildWebSocketUrl() {
             const loc = window.location;
@@ -757,14 +784,14 @@
                         window.addPlayer({
                             id: data.pseudo,
                             name: data.pseudo.replace('-', ' '),
-                            avatarUrl: `https://api.dicebear.com/10.x/loops/svg?seed=${data.pseudo}`,
+                            avatarUrl: `https://api.dicebear.com/10.x/loops/svg?seed=${encodeURIComponent(data.pseudo)}`,
                             points: 0,
                         });
 
                         let display_user_div = document.createElement("div");
                         display_user_div.className = "display_user_div";
                         display_user_div.id = "display_user_div_" + data.pseudo;
-                        display_user_div.innerHTML = `<img src="https://api.dicebear.com/10.x/loops/svg?seed=${data.pseudo}" alt="${data.pseudo}"><p class="user-pseudo">${data.pseudo}</p>`;
+                        display_user_div.innerHTML = `<img src="https://api.dicebear.com/10.x/loops/svg?seed=${encodeURIComponent(data.pseudo)}" alt="${escapeHtml(data.pseudo)}"><p class="user-pseudo">${escapeHtml(data.pseudo)}</p>`;
 
 
                         const element = document.getElementById("playerList");
@@ -776,54 +803,37 @@
 
 
 
-                    case 'player_answered':
+                    case 'player_answered': {
                         console.log("Player answered: ", data.pseudo, " with answer: ", data.answer, " correct: ", data.correct);
                         const user = progression.get(data.pseudo);
+                        if (!user) break; // joueur inconnu (déjà parti ?)
+                        const avatarUrl = `https://api.dicebear.com/10.x/loops/svg?seed=${encodeURIComponent(data.pseudo)}`;
+                        const safePseudo = escapeHtml(data.pseudo);
+                        const ship = document.getElementById("ship-" + data.pseudo);
+                        const crew = document.getElementById("ship-crew-" + data.pseudo);
+
                         if (!playing_with_q_number) {
-                            console.log("We are playing with minutes. Users currently have " + minutes * 60 + " seconds to answer maximum of correct questions");
-                            console.log("Time will be less counted than number of correct questions.");
-                            console.log(user.epoch);
-                            console.log(Date.now());
-                            console.log(data.pseudo + " is curently at " + (Date.now() - user.epoch) + " seconds of game");
                             if (Date.now() - user.epoch > minutes * 60 * 1000) {
-                                console.log("Unfortunately for him, time is over, this question cannot be counted");
+                                console.log(data.pseudo + " : temps écoulé, réponse non comptabilisée");
                             } else {
-                                console.log("Great, just in time");
                                 user.answered++;
-                                console.log("OK, number of question increased, now let's see if it's correct.");
                                 if (data.correct) {
-                                    console.log("Great, it's correct");
                                     user.correct++;
-                                    user.points = 200 * user.correct / user.answered
-                                } else {
-                                    console.log("Unfortunately, NO");
+                                    user.points = 200 * user.correct / user.answered;
                                 }
                                 window.updatePlayerScore(data.pseudo, user.points);
-                                let percent = (100 * ((Date.now() - user.epoch) / (minutes * 60))).toFixed(2);
-                                const ship = document.getElementById("ship-" + data.pseudo);
-                                ship.style.setProperty("--ship-x", percent + "%");
-                                const crew = document.getElementById("ship-crew-" + data.pseudo);
-                                crew.setAttribute(
-                                    "aria-label",
-                                    data.pseudo + ", " + percent + "% of the race"
-                                );
+                                const percent = (100 * ((Date.now() - user.epoch) / (minutes * 60 * 1000))).toFixed(2);
+                                if (ship) ship.style.setProperty("--ship-x", percent + "%");
+                                if (crew) crew.setAttribute("aria-label", data.pseudo + ", " + percent + "% of the race");
                                 socket.send(JSON.stringify({
                                     type: "percent_info",
                                     to_pseudo: data.pseudo,
                                     percent: percent,
                                     game_id: Gamecode
                                 }));
-                                setTimeout(() => {
-                                    send_question(data.pseudo);
-                                }, 2500);
-
-
-
-
-
+                                setTimeout(() => send_question(data.pseudo), 2500);
                             }
-                        }
-                        else {
+                        } else {
                             user.answered++;
                             if (data.correct) {
                                 user.correct++;
@@ -832,163 +842,121 @@
                 <div class="notification">
                     <div class="chat">
                     <div class="profile">
-                        <img src="https://api.dicebear.com/10.x/loops/svg?seed=` + data.pseudo + `" alt="">
+                        <img src="${avatarUrl}" alt="">
                     </div>
                     <div class="message">
-                        ` + data.pseudo + ` a correctement répondu à la question. En attente de la prochaine question.
+                        ${safePseudo} a correctement répondu à la question. En attente de la prochaine question.
                     </div>
                     <div class="user_game">
-                        ` + data.pseudo + `
+                        ${safePseudo}
                     </div>
                     </div>
                 </div>`;
-
                             } else {
                                 console.log("Player answered incorrectly: ", data.pseudo);
-                                if (sound_effects_on) {
-                                    let sound_var = `                     <audio autoplay>
-                        <source src="assets/fail.mp3" type="audio/mpeg">
-                    Your browser does not support the audio element.
-                    </audio>`;
-                                }
-                                else {
-                                    let sound_var = "";
-                                }
+                                const sound_var = sound_effects_on
+                                    ? `<audio autoplay><source src="assets/fail.mp3" type="audio/mpeg">Your browser does not support the audio element.</audio>`
+                                    : "";
 
                                 container.innerHTML = sound_var + `
-
                     <div class="notification">
                         <div class="chat">
                         <div class="profile">
-                            <img src="https://api.dicebear.com/10.x/loops/svg?seed=` + data.pseudo + `" alt="">
+                            <img src="${avatarUrl}" alt="">
                         </div>
                         <div class="message">
-                            ` + data.pseudo + ` à raté. En attente de la prochaine question.
+                            ${safePseudo} à raté. En attente de la prochaine question.
                         </div>
-                        <div _game">
-                            ` + data.pseudo + `
+                        <div class="user_game">
+                            ${safePseudo}
                         </div>
                         </div>
                     </div>`;
                             }
 
-                            setTimeout(() => {
-                                container.innerHTML = "";
-                            }, 5000);
+                            setTimeout(() => { container.innerHTML = ""; }, 5000);
 
                             const time = (Date.now() - user.epoch) / 1000;
-
                             user.points = 1000 * (user.correct / question_number) * (question_number / time);
                             window.updatePlayerScore(data.pseudo, Math.floor(user.points));
 
-
                             if (user.answered < question_number) {
-                                setTimeout(() => {
-                                    send_question(data.pseudo);
-                                }, 2500);
-                            }
-                            else {
-
+                                setTimeout(() => send_question(data.pseudo), 2500);
+                            } else {
                                 console.log("Player finished all questions: ", data.pseudo);
-                                if (sound_effects_on) {
-                                    container.innerHTML = `
-                    <div class="notification">
-                        <audio autoplay>
-                            <source src="assets/victory.mp3" type="audio/mpeg">
-                        Your browser does not support the audio element.
-                        </audio>
-                        <div class="chat">
-                        <div class="profile">
-                            <img src="https://api.dicebear.com/10.x/loops/svg?seed=` + data.pseudo + `" alt="">
-                        </div>
-                        <div class="message">
-                            ` + data.pseudo + ` a terminé toutes les questions. Score: ` + user.correct + ` / ` + question_number + ` Points = ` + user.points + `
-                        </div>
-                        <div class="user_game">
-                            ` + data.pseudo + `
-                        </div>
-                        </div>
-                    </div>`;
-                                } else {
-                                    container.innerHTML = `
+                                const victorySound = sound_effects_on
+                                    ? `<audio autoplay><source src="assets/victory.mp3" type="audio/mpeg">Your browser does not support the audio element.</audio>`
+                                    : "";
+                                container.innerHTML = victorySound + `
                     <div class="notification">
                         <div class="chat">
                         <div class="profile">
-                            <img src="https://api.dicebear.com/10.x/loops/svg?seed=` + data.pseudo + `" alt="">
+                            <img src="${avatarUrl}" alt="">
                         </div>
                         <div class="message">
-                            ` + data.pseudo + ` a terminé toutes les questions. Score: ` + user.correct + ` / ` + question_number + ` Points = ` + user.points + `
+                            ${safePseudo} a terminé toutes les questions. Score: ${user.correct} / ${question_number} Points = ${Math.floor(user.points)}
                         </div>
                         <div class="user_game">
-                            ` + data.pseudo + `
+                            ${safePseudo}
                         </div>
                         </div>
                     </div>`;
-                                }
-                                setTimeout(() => {
-                                    container.innerHTML = "";
-                                }, 5000);
+                                setTimeout(() => { container.innerHTML = ""; }, 5000);
                             }
 
-
-
-                            let percent = (100 * user.answered / question_number).toFixed(2);
-                            const ship = document.getElementById("ship-" + data.pseudo);
-                            ship.style.setProperty("--ship-x", percent + "%");
-
-
-
-                            const crew = document.getElementById("ship-crew-" + data.pseudo);
-                            crew.setAttribute(
-                                "aria-label",
-                                data.pseudo + ", " + percent + "% of the race"
-                            );
+                            const percent = (100 * user.answered / question_number).toFixed(2);
+                            if (ship) ship.style.setProperty("--ship-x", percent + "%");
+                            if (crew) crew.setAttribute("aria-label", data.pseudo + ", " + percent + "% of the race");
                             socket.send(JSON.stringify({
                                 type: "percent_info",
                                 to_pseudo: data.pseudo,
                                 percent: percent,
                                 game_id: Gamecode
                             }));
-
                         }
                         if (verify_game_ended()) {
-                            console.log("Game ended");
-                            document.getElementById("sea").style.display = "none";
-                            document.getElementById("title_finished").textContent = "It's finished, heres the score";
-                            audioElement.src = "assets/finished.mp3"
-                            audioElement.play();
-                            audioElement.loop = false;
+                            onGameEnded();
                         }
-
-
-
-
                         break;
-                    case 'client_left':
-
+                    }
+                    case 'client_left': {
                         console.log("Client left: ", data.pseudo, " with id: ", data.id);
                         const displayUserDiv = document.getElementById("display_user_div_" + data.pseudo);
                         window.removePlayer(data.pseudo);
                         if (displayUserDiv) displayUserDiv.remove();
+
+                        // Sans ça, une partie en mode "nombre de questions" ne peut
+                        // jamais se terminer si un joueur quitte avant d'avoir fini
+                        // (verify_game_ended() l'attendrait indéfiniment).
+                        progression.delete(data.pseudo);
+                        const leftShip = document.getElementById("ship-" + data.pseudo);
+                        if (leftShip) leftShip.remove();
+
+                        const leftAvatarUrl = `https://api.dicebear.com/10.x/loops/svg?seed=${encodeURIComponent(data.pseudo)}`;
+                        const leftSafePseudo = escapeHtml(data.pseudo);
                         container.innerHTML = `
                 <div class="notification">
                     <div class="chat">
                     <div class="profile">
-                        <img src="https://api.dicebear.com/10.x/loops/svg?seed=` + data.pseudo + `" alt="">
+                        <img src="${leftAvatarUrl}" alt="">
                     </div>
                     <div class="message">
-                        ` + data.pseudo + ` Nous a quité. A la prochaine ` + data.pseudo + `!
+                        ${leftSafePseudo} Nous a quité. A la prochaine ${leftSafePseudo} !
                     </div>
                     <div class="user">
-                        ` + data.pseudo + `
+                        ${leftSafePseudo}
                     </div>
                     </div>
                 </div>`;
                         setTimeout(() => {
                             container.innerHTML = "";
                         }, 5000);
+
+                        if (verify_game_ended()) {
+                            onGameEnded();
+                        }
                         break;
-                        break;
+                    }
                     default:
                         console.warn('Type de message WS inconnu :', data.type);
                 }
@@ -1155,11 +1123,20 @@
                     const row = document.createElement('div');
                     row.className = 'user';
                     row.id = id;
-                    row.innerHTML = `
-      <p class="name">${name}</p>
-      <img src="${avatarUrl}" alt="">
-      <p class="points">${points} points</p>
-    `;
+
+                    const nameEl = document.createElement('p');
+                    nameEl.className = 'name';
+                    nameEl.textContent = name;
+
+                    const img = document.createElement('img');
+                    img.src = avatarUrl;
+                    img.alt = '';
+
+                    const pointsEl = document.createElement('p');
+                    pointsEl.className = 'points';
+                    pointsEl.textContent = `${points} points`;
+
+                    row.append(nameEl, img, pointsEl);
                     board.appendChild(row);
                 };
 
@@ -1923,6 +1900,12 @@
         #game_joining_form {
             display: none;
         }
+
+        .form-warning {
+            color: #b5482f;
+            font-weight: 700;
+            min-height: 1.2em;
+        }
     </style>
 
 </head>
@@ -1962,10 +1945,6 @@
             <button id="param21" onclick="selectParam('param21')">Only under a hundred</button>
             <button id="param24" onclick="selectParam('param24')">Only under a thousand</button>
             <button id="param22" onclick="selectParam('param22')">Multiplications only with simple numbers</button>
-            <button id="param23" onclick="selectParam('param23')">No decimal results</button>
-            <br>
-            <h3>General settings</h3>
-            <button id="param31" onclick="selectParam('param31')">QCM enabled</button>
             <br>
             <h4> Number of questions</h4>
             <button id="param32" onclick="selectParam('param32')">5 questions</button>
@@ -1992,12 +1971,14 @@
             <button id="param57" onclick="selectParam('param57')">Pop up music #6</button>
             <br>
             <button id="startbtn" onclick="startloginscreen()" class="glow-on-hover">Start</button>
+            <p id="startWarning" class="form-warning"></p>
         </div>
 
     </div>
     <div id="players">
         <div id="qrcode"></div>
         <h4 id="inputgameCode"></h4>
+        <p id="startGameWarning" class="form-warning"></p>
         <br>
         <br>
         <br>
@@ -2032,22 +2013,3 @@
 </body>
 
 </html>
-<script>
-    /*
-                <div class="user" id="Barbe-Noire">
-                <p class="name">Barbe-Noire</p>
-                <img src="https://api.dicebear.com/10.x/loops/svg?seed=Barbe-Noire" alt="">
-                <p class="points">500 points</p>
-                </div>
-                <div class="user" id="Anne-Bonny">
-                <p class="name">Anne Bonny</p>
-                <img src="https://api.dicebear.com/10.x/loops/svg?seed=Anne-Bonny" alt="">
-                <p class="points">380 points</p>
-                </div>
-                <div class="user" id="Jack-Sparrow">
-                <p class="name">Jack Sparrow</p>
-                <img src="https://api.dicebear.com/10.x/loops/svg?seed=Jack-Sparrow" alt="">
-                <p class="points">260 points</p>
-                </div>
-    */
-</script>
