@@ -878,7 +878,7 @@
                             const time = (Date.now() - user.epoch) / 1000;
 
                             user.points = 1000 * (user.correct / question_number) * (question_number / time);
-                            window.updatePlayerScore(data.pseudo, user.points);
+                            window.updatePlayerScore(data.pseudo, Math.floor(user.points));
 
 
                             if (user.answered < question_number) {

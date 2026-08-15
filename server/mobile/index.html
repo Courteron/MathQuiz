@@ -922,7 +922,7 @@
               const scores_array = data.scores;
               for (const [key, value] of scores_array) {
                 console.log(key);   // "Louis"
-                console.log(value.points); // { score: 42 }
+                console.log(Math.floor(value.points)); // { score: 42 }
                 window.addPlayer({
                   id: key,
                   name: key.replace('-', ' '),
