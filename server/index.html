@@ -513,9 +513,11 @@
             let question = "";
             let correctAnswer = 0;
             let answers = [];
+
             if (!playing_with_q_number){
                 question_number = 1000;
             }
+            let question_is_text = 0;
             for (let i = 0; i < question_number; i++) {
                 try {
                     question = generate_calculation();
@@ -527,6 +529,7 @@
                     continue;
                 }
                 console.log("Generated question: " + question);
+
                 try {
                     if (question.includes("|")) {
                         correctAnswer = question.split("|");
@@ -535,6 +538,7 @@
                         console.log(correctAnswer);
                         console.log(question);
                     } else if (question.includes("<!!!>")) {
+                        question_is_text = 1;
                         correctAnswer = question.split("<!!!>");
                         question = correctAnswer[0];
                         answers = correctAnswer[1].split(",");;
@@ -547,7 +551,7 @@
                 catch (error) {
                     console.error(error);
                 }
-                if (answers != []) {
+                if (question_is_text) {
                     questions.push({
                         text: question,
                         choices: answers,

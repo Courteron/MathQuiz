@@ -969,7 +969,7 @@
           questionText.textContent = data.text || '';
           choicesBox.innerHTML = '';
           answerFeedback.textContent = '';
-          console.log(type(data.choices));
+          console.log(typeof(data.choices));
           console.log(data.choices);
           (data.choices || []).forEach((choice) => {
             const btn = document.createElement('button');
