@@ -239,6 +239,8 @@ wss.on('connection', (ws) => {
 
         if (!myQuestion || data.id !== myQuestion.id) {
           send(ws, { type: 'error', message: 'Aucune question active pour cet identifiant.' });
+          console.log("No active question for answer id :" + data.id);
+          console.log("Pseudo : " + info.pseudo);
           return;
         }
 
@@ -254,6 +256,7 @@ wss.on('connection', (ws) => {
         game.currentQuestions.delete(info.pseudo);
 
         // Le master de CETTE partie voit les réponses arriver en temps réel
+        console.log("Sending to master answer for pseudo : " + info.pseudo);
         sendToMaster(game, {
           type: 'player_answered',
           id: info.id,

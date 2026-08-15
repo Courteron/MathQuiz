@@ -1002,7 +1002,7 @@
         }
         answerFeedback.textContent = 'Réponse envoyée, on attend le verdict…';
         got_answer = false;
-        setTimeout(() => verify_answer_sent(answer), 200);
+        setTimeout(() => verify_answer_sent(answer), 100);
       }
       function verify_answer_sent(answer) {
         if (!got_answer) {
@@ -1013,7 +1013,7 @@
             answer,
             game_id: Gamecode
           }));
-          setTimeout(() => verify_answer_sent(answer), 200);
+          setTimeout(() => verify_answer_sent(answer), 100);
         }
       }
       function renderFeedback(data) {
