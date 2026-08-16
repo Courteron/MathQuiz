@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MathQuiz — Maître du jeu</title>
+    <title>MathQuiz — Master of the game</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -1812,30 +1812,30 @@
         <div id="up">
             <p class="eyebrow">Party quiz</p>
             <h1>MathQuiz</h1>
-            <p class="subtitle">Bienvenue, pirate ! Que veux-tu faire ?</p>
+            <p class="subtitle">Welcome, Pirate ! Select an option</p>
             <div id="choice">
                 <button id="log_in" class="secondary" disabled title="Pas encore implémenté">Log in</button>
                 <button id="sign_up" class="secondary" disabled title="Pas encore implémenté">Sign up</button>
-                <button id="ngame" onclick="displaySelector()">🏴‍☠️ Nouvelle partie</button>
-                <button id="join-game" class="secondary">Rejoindre une partie</button>
+                <button id="ngame" onclick="displaySelector()">New game</button>
+                <button id="join-game" class="secondary">Join a game</button>
             </div>
         </div>
         <div id="game_joining_form">
             <form id="game_joining_code">
-                <label for="input_code">Code de la partie</label>
+                <label for="input_code">Code of the game</label>
                 <input type="text" id="input_code" name="input_code" placeholder="Ex. AB12CD">
                 <input type="submit" value="Rejoindre">
             </form>
         </div>
         <div id="params">
-            <p class="eyebrow">Configuration</p>
-            <h2>Nouvelle partie</h2>
+            <p class="eyebrow">Config</p>
+            <h2>New game</h2>
 
             <div class="param-section">
-                <h4>Types de calcul</h4>
+                <h4>Calculation type</h4>
                 <div class="param-grid">
                     <button id="param11" onclick="selectParam('param11')">Additions</button>
-                    <button id="param12" onclick="selectParam('param12')">Soustractions</button>
+                    <button id="param12" onclick="selectParam('param12')">Substractions</button>
                     <button id="param13" onclick="selectParam('param13')">Multiplications</button>
                     <button id="param14" onclick="selectParam('param14')">Divisions</button>
                 </div>
@@ -1844,14 +1844,14 @@
             <div class="param-section">
                 <h4>Difficulté</h4>
                 <div class="param-grid">
-                    <button id="param21" onclick="selectParam('param21')">Sous la centaine</button>
-                    <button id="param24" onclick="selectParam('param24')">Sous le millier</button>
-                    <button id="param22" onclick="selectParam('param22')">Multiplications simples</button>
+                    <button id="param21" onclick="selectParam('param21')">Under a hundred</button>
+                    <button id="param24" onclick="selectParam('param24')">Under a thousand</button>
+                    <button id="param22" onclick="selectParam('param22')">Simple multiplications</button>
                 </div>
             </div>
 
             <div class="param-section">
-                <h4>Nombre de questions</h4>
+                <h4>Number of questions</h4>
                 <div class="param-grid">
                     <button id="param32" onclick="selectParam('param32')">5 questions</button>
                     <button id="param33" onclick="selectParam('param33')">10 questions</button>
@@ -1860,7 +1860,7 @@
             </div>
 
             <div class="param-section">
-                <h4>Ou bien, temps limite</h4>
+                <h4>or, select a maximum time</h4>
                 <div class="param-grid">
                     <button id="param35" onclick="selectParam('param35')">1 minute</button>
                     <button id="param36" onclick="selectParam('param36')">3 minutes</button>
@@ -1869,18 +1869,18 @@
             </div>
 
             <div class="param-section">
-                <h4>Questions additionnelles</h4>
+                <h4>Additional question type</h4>
                 <div class="param-grid">
-                    <button id="param3" onclick="selectParam('param3')">Résolution d'équation</button>
+                    <button id="param3" onclick="selectParam('param3')">Equations</button>
                     <button id="param4" onclick="selectParam('param4')">Pythagore</button>
-                    <button id="param5" onclick="selectParam('param5')">Culture générale math</button>
+                    <button id="param5" onclick="selectParam('param5')">Math general knowledge</button>
                 </div>
             </div>
 
             <div class="param-section">
                 <h4>Ambiance sonore</h4>
                 <div class="param-grid">
-                    <button id="param51" onclick="selectParam('param51')">Sons de victoire/échec</button>
+                    <button id="param51" onclick="selectParam('param51')">Victory / Fail effects</button>
                     <button id="param52" onclick="selectParam('param52')">Musique #1</button>
                     <button id="param53" onclick="selectParam('param53')">Musique #2</button>
                     <button id="param54" onclick="selectParam('param54')">Musique #3</button>
@@ -1890,24 +1890,24 @@
                 </div>
             </div>
 
-            <button id="startbtn" onclick="startloginscreen()">Lancer la partie</button>
+            <button id="startbtn" onclick="startloginscreen()">Launch game</button>
             <p id="startWarning" class="form-warning"></p>
         </div>
 
     </div>
     <div id="players">
-        <p class="eyebrow">Embarquement</p>
-        <h2>En attente des joueurs</h2>
+        <p class="eyebrow">Onboarding started</p>
+        <h2>Waiting for players</h2>
         <div id="qrcode"></div>
         <h4 id="inputgameCode"></h4>
         <ul id="playerList"></ul>
         <p id="startGameWarning" class="form-warning"></p>
-        <button id="startGameBtn">Démarrer la partie</button>
+        <button id="startGameBtn">Start game</button>
     </div>
     <div id="sea">
     </div>
     <div id="billboard">
-        <h1 id="title_finished">Classement</h1>
+        <h1 id="title_finished">Scoreboard</h1>
 
         <div id="real_time_scoreboard">
 
