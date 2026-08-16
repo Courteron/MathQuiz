@@ -727,6 +727,8 @@
             if (sea) sea.style.display = "none";
             const title = document.getElementById("title_finished");
             if (title) title.textContent = "Game ended, here are the scores";
+            const addictivebutton = document.getElementById("new_game_after");
+            if (addictivebutton) addictivebutton.style.display = "block";
             audioElement.src = "assets/finished.mp3"
             audioElement.play();
             audioElement.loop = false;
@@ -1238,7 +1240,9 @@
         #billboard {
             display: none;
         }
-
+        #new_game_after {
+            display: none;
+        }
         #up {
             display: flex;
             flex-direction: column;
@@ -1941,7 +1945,7 @@
         <div id="real_time_scoreboard">
 
         </div>
-
+        <button id="new_game_after" onclick="displaySelector()">It was fun, let's start again !</button>
     </div>
 </body>
 
