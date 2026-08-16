@@ -184,6 +184,7 @@ wss.on('connection', (ws) => {
           to_pseudo: data.to_pseudo,
           choices: data.choices,
           correctAnswer: data.correctAnswer,
+          sentAt: Date.now(),
         };
         game.currentQuestions.set(data.to_pseudo, question);
         console.log(question.choices);
@@ -267,6 +268,9 @@ wss.on('connection', (ws) => {
         }
 
         const isCorrect = data.answer === myQuestion.correctAnswer;
+        // Mesuré côté serveur (entre l'envoi de la question et la réception de la
+        // réponse) pour être autoritaire : insensible au clock drift ou à la triche client.
+        const responseTime = Math.max(0, (Date.now() - myQuestion.sentAt) / 1000);
         send(ws, {
           type: 'answer_ack',
           correct: isCorrect,
@@ -285,6 +289,7 @@ wss.on('connection', (ws) => {
           pseudo: info.pseudo,
           answer: data.answer,
           correct: isCorrect,
+          responseTime,
         });
         break;
       }

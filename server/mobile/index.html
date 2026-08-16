@@ -506,6 +506,28 @@
     }
 
     /* -------- Question view -------- */
+    .timer-track {
+      width: 100%;
+      height: 10px;
+      background: var(--parchment-dark);
+      border: 2px solid var(--wood);
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 4px 0 14px;
+    }
+
+    .timer-fill {
+      height: 100%;
+      width: 100%;
+      background: var(--gold);
+      border-radius: 6px 0 0 6px;
+      transition: width 1s linear, background-color .3s ease;
+    }
+
+    .timer-fill.urgent {
+      background: var(--coral);
+    }
+
     .question-text {
       font-size: 18px;
       font-weight: 600;
@@ -801,6 +823,9 @@
     <!-- Vue 3 : question reçue -->
     <section class="question-view" id="questionView">
       <p class="eyebrow" id="questionEyebrow">Question</p>
+      <div class="timer-track" id="timerTrack">
+        <div class="timer-fill" id="timerFill"></div>
+      </div>
       <p class="question-text" id="questionText"></p>
       <div class="choices" id="choicesBox"></div>
       <p class="answer-feedback" id="answerFeedback"></p>
@@ -833,10 +858,13 @@
       const choicesBox = document.getElementById('choicesBox');
       const answerFeedback = document.getElementById('answerFeedback');
       const bgMusic = document.getElementById('bgMusic');
+      const timerFill = document.getElementById('timerFill');
 
       let pseudo = '';
       let currentQuestionId = null;
       let socket = null;
+      let questionTimerInterval = null;
+      const QUESTION_DURATION_S = 60;
 
       // ---------- Construction de l'URL WebSocket ----------
       // Le serveur Node.js sert les fichiers statiques ET le WebSocket sur le
@@ -921,6 +949,7 @@
               bgMusic.play().catch(() => {});
               break;
             case 'game_ended':
+              stopQuestionTimer();
               bgMusic.src = "../assets/finished.mp3";
               document.getElementById("waiting-caption").textContent = "It's finished, look up to the screen to see your score";
               bgMusic.play().catch(() => {});
@@ -999,16 +1028,46 @@
           });
 
           showView(questionView);
+          startQuestionTimer();
         }
         catch (error) {
           console.error(error);
         }
       }
+
+      // ---------- Chrono visuel par question (60s, purement cosmétique : le
+      // temps de réponse qui compte pour le score est mesuré côté serveur) ----------
+      function startQuestionTimer() {
+        stopQuestionTimer(); // jamais deux intervalles en parallèle
+        let remaining = QUESTION_DURATION_S;
+        if (timerFill) {
+          timerFill.classList.remove('urgent');
+          timerFill.style.width = '100%';
+        }
+        questionTimerInterval = setInterval(() => {
+          remaining -= 1;
+          const percent = Math.max(0, (remaining / QUESTION_DURATION_S) * 100);
+          if (timerFill) {
+            timerFill.style.width = percent + '%';
+            timerFill.classList.toggle('urgent', remaining <= 10);
+          }
+          if (remaining <= 0) stopQuestionTimer();
+        }, 1000);
+      }
+
+      function stopQuestionTimer() {
+        if (questionTimerInterval) {
+          clearInterval(questionTimerInterval);
+          questionTimerInterval = null;
+        }
+      }
+
       let got_answer = false;
       function submitAnswer(answer, btnEl) {
         // Empêche un double-clic (ou un clic tardif après coup) de renvoyer
         // une réponse pour une question déjà traitée côté serveur.
         if (choicesBox.dataset.answered === 'true') return;
+        stopQuestionTimer();
         choicesBox.dataset.answered = 'true';
         [...choicesBox.children].forEach(b => { b.classList.remove('selected'); b.disabled = true; });
         btnEl.classList.add('selected');
