@@ -506,7 +506,7 @@
             let correctAnswer = 0;
             let answers = [];
 
-            if (!playing_with_q_number){
+            if (!playing_with_q_number) {
                 question_number = 1000;
             }
             let question_is_text = 0;
@@ -589,32 +589,32 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("param52").addEventListener("click", () => {
                 audioElement.src = "assets/music1.mp3"
-                audioElement.play().catch(() => {});
+                audioElement.play().catch(() => { });
                 audioElement.loop = true;
             });
             document.getElementById("param53").addEventListener("click", () => {
                 audioElement.src = "assets/music2.mp3"
-                audioElement.play().catch(() => {});
+                audioElement.play().catch(() => { });
                 audioElement.loop = true;
             });
             document.getElementById("param54").addEventListener("click", () => {
                 audioElement.src = "assets/music3.mp3"
-                audioElement.play().catch(() => {});
+                audioElement.play().catch(() => { });
                 audioElement.loop = true;
             });
             document.getElementById("param55").addEventListener("click", () => {
                 audioElement.src = "assets/music4.mp3"
-                audioElement.play().catch(() => {});
+                audioElement.play().catch(() => { });
                 audioElement.loop = true;
             });
             document.getElementById("param56").addEventListener("click", () => {
                 audioElement.src = "assets/music5.mp3"
-                audioElement.play().catch(() => {});
+                audioElement.play().catch(() => { });
                 audioElement.loop = true;
             });
             document.getElementById("param57").addEventListener("click", () => {
                 audioElement.src = "assets/music6.mp3"
-                audioElement.play().catch(() => {});
+                audioElement.play().catch(() => { });
                 audioElement.loop = true;
             });
 
@@ -915,17 +915,18 @@
                     }
                     case 'client_left': {
                         console.log("Client left: ", data.pseudo, " with id: ", data.id);
-                        const displayUserDiv = document.getElementById("display_user_div_" + data.pseudo);
-                        window.removePlayer(data.pseudo);
-                        if (displayUserDiv) displayUserDiv.remove();
+                        if (verify_game_ended()) {
+                            const displayUserDiv = document.getElementById("display_user_div_" + data.pseudo);
+                            window.removePlayer(data.pseudo);
+                            if (displayUserDiv) displayUserDiv.remove();
 
-                        // Sans ça, une partie en mode "nombre de questions" ne peut
-                        // jamais se terminer si un joueur quitte avant d'avoir fini
-                        // (verify_game_ended() l'attendrait indéfiniment).
-                        progression.delete(data.pseudo);
-                        const leftShip = document.getElementById("ship-" + data.pseudo);
-                        if (leftShip) leftShip.remove();
-
+                            // Sans ça, une partie en mode "nombre de questions" ne peut
+                            // jamais se terminer si un joueur quitte avant d'avoir fini
+                            // (verify_game_ended() l'attendrait indéfiniment).
+                            progression.delete(data.pseudo);
+                            const leftShip = document.getElementById("ship-" + data.pseudo);
+                            if (leftShip) leftShip.remove();
+                        }
                         const leftAvatarUrl = `https://api.dicebear.com/10.x/loops/svg?seed=${encodeURIComponent(data.pseudo)}`;
                         const leftSafePseudo = escapeHtml(data.pseudo);
                         container.innerHTML = `
@@ -1166,7 +1167,8 @@
             box-sizing: border-box;
         }
 
-        html, body {
+        html,
+        body {
             margin: 0;
             padding: 0;
             min-height: 100vh;
@@ -1188,15 +1190,25 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        h1, h2, h3, h4 {
+        h1,
+        h2,
+        h3,
+        h4 {
             font-family: 'Pirata One', cursive;
             color: var(--wood);
             margin: 0 0 6px;
             text-shadow: 1px 1px 0 rgba(212, 167, 44, .3);
         }
 
-        h2 { font-size: 1.6rem; }
-        h3 { font-size: 1.2rem; margin-top: 18px; }
+        h2 {
+            font-size: 1.6rem;
+        }
+
+        h3 {
+            font-size: 1.2rem;
+            margin-top: 18px;
+        }
+
         h4 {
             font-family: 'Special Elite', monospace;
             font-size: .78rem;
@@ -1208,7 +1220,9 @@
         }
 
         /* ---------- Cartes principales (écrans) ---------- */
-        #ToHide, #players, #billboard {
+        #ToHide,
+        #players,
+        #billboard {
             width: 100%;
             max-width: 640px;
             background: var(--parchment);
@@ -1295,7 +1309,8 @@
             box-shadow: 0 2px 0 var(--wood), 0 4px 8px rgba(0, 0, 0, .16);
         }
 
-        #startGameBtn, #startbtn {
+        #startGameBtn,
+        #startbtn {
             width: 100%;
             font-size: 17px;
             margin-top: 8px;
@@ -1303,7 +1318,8 @@
             box-shadow: 0 6px 0 #1F4A34, 0 10px 16px rgba(0, 0, 0, .22);
         }
 
-        #startGameBtn:active, #startbtn:active {
+        #startGameBtn:active,
+        #startbtn:active {
             box-shadow: 0 2px 0 #1F4A34, 0 4px 8px rgba(0, 0, 0, .2);
         }
 
@@ -1364,7 +1380,8 @@
             margin: 4px 0;
         }
 
-        #startWarning, #startGameWarning {
+        #startWarning,
+        #startGameWarning {
             margin-top: 12px;
         }
 
@@ -1427,7 +1444,8 @@
             margin: 4px 0 14px;
         }
 
-        #qrcode img, #qrcode canvas {
+        #qrcode img,
+        #qrcode canvas {
             border-radius: 12px;
             border: 4px solid var(--wood);
             background: #fff;
@@ -1512,8 +1530,13 @@
         }
 
         @keyframes getBlurry {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
 
         .chat {
@@ -1525,8 +1548,15 @@
         }
 
         @keyframes popFromBottom {
-            0% { transform: translateY(60px) scale(.8); opacity: 0; }
-            100% { transform: translateY(0) scale(1); opacity: 1; }
+            0% {
+                transform: translateY(60px) scale(.8);
+                opacity: 0;
+            }
+
+            100% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
         }
 
         .chat .profile {
@@ -1801,7 +1831,6 @@
         .user.moving {
             transition: transform .5s cubic-bezier(.22, 1, .36, 1);
         }
-
     </style>
 
 </head>
