@@ -1148,7 +1148,10 @@
             })();
 
         });
-    </script>
+        function ngame_after(){
+            window.location.reload();
+        }
+</script>
     <style>
         :root {
             --sea-deep: #072D3B;
@@ -1945,7 +1948,7 @@
         <div id="real_time_scoreboard">
 
         </div>
-        <button id="new_game_after" onclick="displaySelector()">It was fun, let's start again !</button>
+        <button id="new_game_after" onclick="ngame_after()">It was fun, let's start again !</button>
     </div>
 </body>
 
