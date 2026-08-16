@@ -181,7 +181,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("inputgameCode").textContent =
-                `Ou va sur ${window.location.origin} , choisis "Rejoindre une partie" et entre le code : ${Gamecode}`;
+                `Scan QR code or launch ${window.location.origin} , choose Join a game and enter code : ${Gamecode}`;
             connect();
 
             document.getElementById("join-game").addEventListener("click", () => {
@@ -629,7 +629,7 @@
             document.getElementById("startGameBtn").addEventListener("click", () => {
                 const startGameWarning = document.getElementById("startGameWarning");
                 if (progression.size === 0) {
-                    if (startGameWarning) startGameWarning.textContent = "Attends qu'au moins un joueur rejoigne la partie !";
+                    if (startGameWarning) startGameWarning.textContent = "Wait for players to join the game";
                     return;
                 }
                 if (startGameWarning) startGameWarning.textContent = "";
@@ -726,7 +726,7 @@
             const sea = document.getElementById("sea");
             if (sea) sea.style.display = "none";
             const title = document.getElementById("title_finished");
-            if (title) title.textContent = "Partie terminée, voici le classement";
+            if (title) title.textContent = "Game ended, here are the scores";
             audioElement.src = "assets/finished.mp3"
             audioElement.play();
             audioElement.loop = false;
