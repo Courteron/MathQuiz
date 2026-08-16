@@ -1055,7 +1055,9 @@
                         <source src="../assets/fail.mp3" type="audio/mpeg">
                     Your browser does not support the audio element.
                     </audio>`
-          if (navigator.vibrate) navigator.vibrate(500);
+          setTimeout(() => {
+            if (navigator.vibrate) navigator.vibrate(500);
+          }, 100);
         }
         // Retour à l'attente après un court instant, prêt pour la question suivante
         setTimeout(() => showView(waitingView), 2000);
