@@ -873,7 +873,7 @@
                     </div>`;
                             }
 
-                            setTimeout(() => { container.innerHTML = ""; }, 5000);
+                            setTimeout(() => { container.innerHTML = ""; }, 1500);
 
                             const time = (Date.now() - user.epoch) / 1000;
                             user.points = 1000 * (user.correct / question_number) * (question_number / time);
@@ -897,7 +897,7 @@
                         </div>
                         </div>
                     </div>`;
-                                setTimeout(() => { container.innerHTML = ""; }, 5000);
+                                setTimeout(() => { container.innerHTML = ""; }, 1500);
                             }
 
                             const percent = (100 * user.answered / question_number).toFixed(2);
