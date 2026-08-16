@@ -348,6 +348,14 @@
       outline: 3px solid var(--sea-light);
     }
 
+    .pseudo-error {
+      font-family: 'Special Elite', monospace;
+      font-size: 12px;
+      color: var(--coral);
+      min-height: 16px;
+      margin: 10px 0 0;
+    }
+
     button {
       font-family: 'Poppins', sans-serif;
       font-weight: 600;
@@ -765,6 +773,7 @@
         <input type="text" id="pseudo" name="pseudo" placeholder="Ex. Barbe-Noire" required maxlength="24">
         <button type="submit">Hop aboard</button>
       </form>
+      <p class="pseudo-error" id="pseudoError" role="alert"></p>
     </section>
 
     <!-- Vue 2 : en attente de question -->
@@ -815,6 +824,7 @@
       const questionView = document.getElementById('questionView');
       const form = document.getElementById('getPseudo');
       const pseudoInput = document.getElementById('pseudo');
+      const pseudoError = document.getElementById('pseudoError');
       const greetingEl = document.getElementById('greetingPseudo');
       const avatarEl = document.getElementById('userAvatar');
       const statusDot = document.getElementById('statusDot');
@@ -908,12 +918,12 @@
             case 'game_started':
               console.log(data);
               bgMusic.src = "../assets/music" + data.music_id + ".mp3";
-              bgMusic.play();
+              bgMusic.play().catch(() => {});
               break;
             case 'game_ended':
               bgMusic.src = "../assets/finished.mp3";
               document.getElementById("waiting-caption").textContent = "It's finished, look up to the screen to see your score";
-              bgMusic.play();
+              bgMusic.play().catch(() => {});
               bgMusic.loop = false;
               const board = document.getElementById("billboard");
               if (board) board.style.display = 'block';
@@ -921,26 +931,33 @@
               //const scores_array = JSON.parse(data.scores);
               const scores_array = data.scores;
               for (const [key, value] of scores_array) {
-                console.log(key);   // "Louis"
-                console.log(Math.floor(value.points)); // { score: 42 }
                 window.addPlayer({
                   id: key,
                   name: key.replace('-', ' '),
-                  avatarUrl: `https://api.dicebear.com/10.x/loops/svg?seed=${key}`,
-                  points: value.points,
+                  avatarUrl: `https://api.dicebear.com/10.x/loops/svg?seed=${encodeURIComponent(key)}`,
+                  points: Math.floor(value.points),
                 });
               }
               break;
             case 'answer_ack':
               renderFeedback(data);
               break;
-            case 'percent_info':
+            case 'percent_info': {
               if (data.to_pseudo === pseudo) {
                 console.info(`Pourcentage de bonnes réponses pour ${pseudo} : ${data.percent}%`);
               }
               const ship = document.querySelector(".ship");
-
-              ship.style.left = data.percent + "%";
+              if (ship) ship.style.left = data.percent + "%";
+              break;
+            }
+            case 'pseudo_taken':
+              pseudoError.textContent = `"${data.pseudo}" est déjà pris dans cette partie, choisis un autre nom.`;
+              pseudo = '';
+              bgMusic.pause();
+              showView(pseudoView);
+              break;
+            case 'error':
+              console.error('Erreur serveur :', data.message);
               break;
             case 'info':
               console.info('Serveur :', data.message);
@@ -968,6 +985,7 @@
           currentQuestionId = data.id ?? null;
           questionText.textContent = data.text || '';
           choicesBox.innerHTML = '';
+          choicesBox.dataset.answered = 'false';
           answerFeedback.textContent = '';
           console.log(typeof(data.choices));
           console.log(data.choices);
@@ -988,7 +1006,11 @@
       }
       let got_answer = false;
       function submitAnswer(answer, btnEl) {
-        [...choicesBox.children].forEach(b => b.classList.remove('selected'));
+        // Empêche un double-clic (ou un clic tardif après coup) de renvoyer
+        // une réponse pour une question déjà traitée côté serveur.
+        if (choicesBox.dataset.answered === 'true') return;
+        choicesBox.dataset.answered = 'true';
+        [...choicesBox.children].forEach(b => { b.classList.remove('selected'); b.disabled = true; });
         btnEl.classList.add('selected');
 
         if (socket && socket.readyState === WebSocket.OPEN) {
@@ -1002,10 +1024,15 @@
         }
         answerFeedback.textContent = 'Réponse envoyée, on attend le verdict…';
         got_answer = false;
-        setTimeout(() => verify_answer_sent(answer), 100);
+        setTimeout(() => verify_answer_sent(answer, 0), 100);
       }
-      function verify_answer_sent(answer) {
-        if (!got_answer) {
+      function verify_answer_sent(answer, attempt) {
+        if (got_answer) return;
+        if (attempt > 100) {
+          answerFeedback.textContent = 'Connexion perdue, en attente de reconnexion…';
+          return;
+        }
+        if (socket && socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({
             type: 'answer',
             id: currentQuestionId,
@@ -1013,8 +1040,8 @@
             answer,
             game_id: Gamecode
           }));
-          setTimeout(() => verify_answer_sent(answer), 100);
         }
+        setTimeout(() => verify_answer_sent(answer, attempt + 1), 100);
       }
       function renderFeedback(data) {
         got_answer = true;
@@ -1022,15 +1049,13 @@
         answerFeedback.textContent = data.correct
           ? '🏆 Correct'
           : '💀 Wrong, correct answer was : ' + (data.correctAnswer ?? '?');
-        if (answerFeedback.textContent == '💀 Wrong, correct answer was : ' + (data.correctAnswer ?? '?')) {
-
+        if (!data.correct) {
           container.innerHTML = `
                     <audio autoplay>
                         <source src="../assets/fail.mp3" type="audio/mpeg">
                     Your browser does not support the audio element.
                     </audio>`
-          navigator.vibrate(500);
-
+          if (navigator.vibrate) navigator.vibrate(500);
         }
         // Retour à l'attente après un court instant, prêt pour la question suivante
         setTimeout(() => showView(waitingView), 2000);
@@ -1044,6 +1069,7 @@
         event.preventDefault();
         const value = pseudoInput.value.trim();
         if (!value) return;
+        pseudoError.textContent = '';
         joinGame(value);
       });
 
@@ -1193,11 +1219,20 @@
           const row = document.createElement('div');
           row.className = 'user';
           row.id = id;
-          row.innerHTML = `
-      <p class="name">${name}</p>
-      <img src="${avatarUrl}" alt="">
-      <p class="points">${points} points</p>
-    `;
+
+          const nameEl = document.createElement('p');
+          nameEl.className = 'name';
+          nameEl.textContent = name;
+
+          const img = document.createElement('img');
+          img.src = avatarUrl;
+          img.alt = '';
+
+          const pointsEl = document.createElement('p');
+          pointsEl.className = 'points';
+          pointsEl.textContent = `${points} points`;
+
+          row.append(nameEl, img, pointsEl);
           board.appendChild(row);
         };
 
@@ -1216,7 +1251,6 @@
 
     });
   </script>
-  <script src="https://unpkg.com/ios-haptics@latest/dist/index.umd.js"></script>
 </body>
 
 </html>

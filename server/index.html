@@ -1,8 +1,15 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 
 <head>
-    <title>MathQuiz</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathQuiz — Maître du jeu</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Pirata+One&family=Special+Elite&family=Poppins:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
 
     <script src=" https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js "></script>
     <script>
@@ -15,8 +22,6 @@
         let simple_pythagore = 0;
         let under_hundred = 0;
         let under_thousand = 0;
-        let no_decimals = 0;
-        let QCM = 0;
         let simple_numbers = 0;
         let progression = new Map();    // Map with progression of players key = pseudo then number of correct answers, number of questions answered, number of questions answered correctly in a row
         let playing_with_q_number = 1;
@@ -27,6 +32,8 @@
         let questions = [];
         let Gamecode = "";
         let math_gen_question = 0;
+        let minutesModeInterval = null;
+        let gameHasEnded = false;
         const char_list = ["A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P", "Q", "S", "D", "F", "G", "H", "J", "K", "L", "M", "W", "X", "C", "V", "B", "N", "-"];
 
 
@@ -173,43 +180,10 @@
         const audioElement = new Audio("assets/music" + music_id + ".mp3");
 
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById("inputgameCode").textContent = "Or go on " + window.location.href + " , select join with code and enter  code :" + Gamecode + "";
+            document.getElementById("inputgameCode").textContent =
+                `Ou va sur ${window.location.origin} , choisis "Rejoindre une partie" et entre le code : ${Gamecode}`;
             connect();
 
-            const selectParamButtons = document.querySelectorAll('.selectparam');
-
-            selectParamButtons.forEach((button) => {
-                button.addEventListener('click', () => {
-                    button.style.backgroundColor = 'green';
-                });
-            });
-            const ngameButtons = document.querySelectorAll('ngame');
-
-            ngameButtons.forEach((button) => {
-                button.addEventListener('click', () => {
-                    const ngameparamdiv = document.getElementById("params");
-                    if (ngameparamdiv) ngameparamdiv.style.display = 'block';
-                });
-            });
-            const startgameButton = document.querySelectorAll('startbtn');
-            /*
-                        startgameButton.forEach((button) => {
-                            button.addEventListener('click', () => {
-                                const tohidediv = document.getElementById("ToHide");
-                                if (tohidediv) tohidediv.style.display = 'none';
-                                const playerdiv = document.getElementById("players");
-                                if (playerdiv) playerdiv.style.display = 'block';
-            
-                                const char_list = ["A","Z","E","R","T","Y","U","I","O","P","Q","S","D","F","G","H","J","K","L","M","W","X","C","V","B","N","?","/","-"];
-                                let Gamecode = "";
-                                for (i=1; i<=6; i++){
-                                    let Gamecode = Gamecode + list[Math.floor(Math.random() * list.length)];
-                                }
-                                document.getElementById("inputgameCode").textContent = "Or go on " + windows.location.href + " , select join with code and enter  code : " + Gamecode;
-                                new QRCode(document.getElementById("qrcode"), document.getElementById("qrcode"), window.location.href + "mobile/index.html?code=" + Gamecode);
-                            });
-                        });
-            */
             document.getElementById("join-game").addEventListener("click", () => {
                 const up_form = document.getElementById("up");
                 if (up_form) up_form.style.display = 'none';
@@ -219,9 +193,7 @@
             document.getElementById("game_joining_form").addEventListener("submit", (event) => {
                 event.preventDefault();
                 const formData = new FormData(event.target);
-                window.location.href = window.location.href + "/mobile/index.html?code=" + formData.get("input_code");
-                const game_joining_form = document.getElementById("game_joining_form");
-                if (game_joining_form) game_joining_form.style.display = 'none';
+                window.location.href = `${window.location.origin}/mobile/index.html?code=${encodeURIComponent(formData.get("input_code"))}`;
             });
         });
 
@@ -232,20 +204,21 @@
             if (btn) {
                 if (["param32", "param33", "param34", "param35", "param36", "param37"].includes(id)) {
                     for (let i = 32; i <= 37; i++) {
-                        document.getElementById("param" + i).style.backgroundColor = 'blue';
+                        document.getElementById("param" + i).classList.remove('selected');
                     }
                 }
                 if (["param52", "param53", "param54", "param55", "param56", "param57"].includes(id)) {
                     for (let i = 52; i <= 57; i++) {
-                        document.getElementById("param" + i).style.backgroundColor = 'blue';
+                        document.getElementById("param" + i).classList.remove('selected');
                     }
                 }
-                if (btn.style.backgroundColor === 'green') {
-                    btn.style.backgroundColor = 'blue';
+                // "Under a hundred" et "Under a thousand" sont mutuellement exclusifs
+                // (getnumber_for_calculation() ne peut appliquer qu'une seule limite).
+                if (["param21", "param24"].includes(id)) {
+                    document.getElementById("param21").classList.remove('selected');
+                    document.getElementById("param24").classList.remove('selected');
                 }
-                else {
-                    btn.style.backgroundColor = 'green';
-                }
+                btn.classList.toggle('selected');
             }
 
         }
@@ -261,7 +234,7 @@
                 const btn = document.getElementById("param" + i);
                 if (btn) {
 
-                    if (btn.style.backgroundColor == "green") {
+                    if (btn.classList.contains('selected')) {
                         switch (i) {
                             case 11:
                                 additions = 1;
@@ -284,9 +257,6 @@
                             case 5:
                                 math_gen_question = 1;
                                 break;
-                            case 6:
-                                QCM = 1;
-                                break;
                             case 21:
                                 under_hundred = 1;
                                 break;
@@ -295,9 +265,6 @@
                                 break;
                             case 22:
                                 simple_numbers = 1;
-                                break;
-                            case 23:
-                                no_decimals = 1;
                                 break;
                             case 32:
                                 playing_with_q_number = 1;
@@ -361,8 +328,19 @@
                 "under_thousand": under_thousand,
                 "simple_numbers": simple_numbers,
                 "music": music_id,
-                "QCM": QCM
             });
+
+            // Sans au moins un type de calcul actif, generate_question_list()
+            // ne peut produire aucune question et boucle indéfiniment (tab gelé).
+            const hasCalculationType = additions || substractions || multiplications ||
+                divisions || equation_solving || math_gen_question || simple_pythagore;
+            const startWarning = document.getElementById("startWarning");
+            if (!hasCalculationType) {
+                if (startWarning) startWarning.textContent = "Sélectionne au moins un type de calcul avant de démarrer !";
+                return;
+            }
+            if (startWarning) startWarning.textContent = "";
+
             const div = document.getElementById("ToHide");
             if (div) div.style.display = 'none';
             const hdiv = document.getElementById("players");
@@ -382,6 +360,7 @@
             if (divisions) types.push("div");
             if (equation_solving) types.push("equa");
             if (math_gen_question) types.push('genQ');
+            if (simple_pythagore) types.push('pyth');
 
             if (types.length === 0) {
                 console.log("No calculation available");
@@ -459,7 +438,7 @@
                 substractions = old_sub;
                 multiplications = old_mult;
                 divisions = old_div;
-                math_gen_question = old_div;
+                math_gen_question = old_math_genQ;
                 let result = eval(first_equation);
                 let myresult = first_equation.replace(/\s+/g, "").match(/^(\d+)([+*/-])(\d+)$/);
                 let realresult = myresult[1];
@@ -467,6 +446,17 @@
                 myresult[1] = "x"
                 console.log("Final : ", result + "= x " + myresult[2] + " " + myresult[3] + "|" + realresult);
                 return result + "= x " + myresult[2] + " " + myresult[3] + "|" + realresult;
+            }
+            if (type === "pyth") {
+                // Triplets pythagoriciens connus, mis à l'échelle pour varier la difficulté.
+                const triples = [[3, 4, 5], [6, 8, 10], [5, 12, 13], [8, 15, 17], [7, 24, 25], [9, 12, 15], [20, 21, 29]];
+                const [legA, legB, hyp] = triples[Math.floor(Math.random() * triples.length)];
+                const scale = Math.floor(Math.random() * 3) + 1;
+                const sideA = legA * scale;
+                const sideB = legB * scale;
+                const hypotenuse = hyp * scale;
+                console.log(`Pythagore: ${sideA}² + ${sideB}² = ${hypotenuse}²`);
+                return `Un triangle rectangle a des côtés de ${sideA} et ${sideB}. Quelle est la longueur de son hypoténuse ?|${hypotenuse}`;
             }
             if (type == "genQ") {
                 const genQQ = math_general_questions[Math.floor(Math.random() * math_general_questions.length)];
@@ -520,14 +510,23 @@
                 question_number = 1000;
             }
             let question_is_text = 0;
+            let consecutiveFailures = 0;
             for (let i = 0; i < question_number; i++) {
                 question_is_text = 0;
                 try {
                     question = generate_calculation();
                     if (!question) throw new Error("question vide");
+                    consecutiveFailures = 0;
                 }
                 catch (error) {
                     console.error(error);
+                    // Filet de sécurité : si aucun type de calcul ne peut produire de
+                    // question, on arrête au lieu de boucler indéfiniment (tab gelé).
+                    consecutiveFailures++;
+                    if (consecutiveFailures > 1000) {
+                        console.error("Impossible de générer des questions, arrêt.");
+                        break;
+                    }
                     i--;
                     continue;
                 }
@@ -590,32 +589,32 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("param52").addEventListener("click", () => {
                 audioElement.src = "assets/music1.mp3"
-                audioElement.play();
+                audioElement.play().catch(() => {});
                 audioElement.loop = true;
             });
             document.getElementById("param53").addEventListener("click", () => {
                 audioElement.src = "assets/music2.mp3"
-                audioElement.play();
+                audioElement.play().catch(() => {});
                 audioElement.loop = true;
             });
             document.getElementById("param54").addEventListener("click", () => {
                 audioElement.src = "assets/music3.mp3"
-                audioElement.play();
+                audioElement.play().catch(() => {});
                 audioElement.loop = true;
             });
             document.getElementById("param55").addEventListener("click", () => {
                 audioElement.src = "assets/music4.mp3"
-                audioElement.play();
+                audioElement.play().catch(() => {});
                 audioElement.loop = true;
             });
             document.getElementById("param56").addEventListener("click", () => {
                 audioElement.src = "assets/music5.mp3"
-                audioElement.play();
+                audioElement.play().catch(() => {});
                 audioElement.loop = true;
             });
             document.getElementById("param57").addEventListener("click", () => {
                 audioElement.src = "assets/music6.mp3"
-                audioElement.play();
+                audioElement.play().catch(() => {});
                 audioElement.loop = true;
             });
 
@@ -628,6 +627,12 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("startGameBtn").addEventListener("click", () => {
+                const startGameWarning = document.getElementById("startGameWarning");
+                if (progression.size === 0) {
+                    if (startGameWarning) startGameWarning.textContent = "Attends qu'au moins un joueur rejoigne la partie !";
+                    return;
+                }
+                if (startGameWarning) startGameWarning.textContent = "";
                 socket.send(JSON.stringify({
                     type: "start_game",
                     music_id: music_id,
@@ -636,34 +641,54 @@
 
                 const hdiv = document.getElementById("players");
                 if (hdiv) hdiv.style.display = 'none';
-                const thediv = document.getElementById("question_dev");
-                if (thediv) thediv.style.display = 'none';
-                const theform = document.getElementById("question_dev_form");
-                if (theform) theform.style.display = 'none';
                 const board = document.getElementById("billboard");
                 if (board) board.style.display = 'block';
                 setTimeout(() => {
                     for (const [key, value] of progression.entries()) {
                         value.epoch = Date.now();
-                        console.log("Sending question to: " + key);
-                        send_question(key);
 
-                        document.getElementById("sea").innerHTML += `
+                        // Le bateau doit exister AVANT le premier envoi de question :
+                        // une réponse trop rapide pourrait sinon chercher un élément
+                        // DOM qui n'existe pas encore.
+                        const sea = document.getElementById("sea");
+                        if (sea) {
+                            sea.insertAdjacentHTML('beforeend', `
                                 <div id="ship-${key}" class="ship" aria-hidden="true">
                                     ⛵
                                     <div id="ship-crew-${key}" class="ship-crew" tabindex="0" role="img"
-                                        aria-label="${key}, 55% of the race">
+                                        aria-label="${escapeHtml(key)}, 0% of the race">
                                         👤
-                                        <span class="crew-tooltip">${key} — 0% of the race</span>
+                                        <span class="crew-tooltip">${escapeHtml(key)} — 0% of the race</span>
                                     </div>
-                                </div>`;
+                                </div>`);
+                        }
+
+                        console.log("Sending question to: " + key);
+                        send_question(key);
                     }
                 }, 2000);
+
+                if (!playing_with_q_number) {
+                    // Filet de sécurité : en mode minuteur, verify_game_ended() n'est
+                    // sinon vérifié que quand quelqu'un répond. Si le dernier joueur
+                    // actif n'envoie plus rien après la fin de son temps, la partie ne
+                    // se terminerait jamais côté maître.
+                    minutesModeInterval = setInterval(() => {
+                        if (verify_game_ended()) {
+                            clearInterval(minutesModeInterval);
+                            onGameEnded();
+                        }
+                    }, 3000);
+                }
             });
 
         });
 
         function verify_game_ended() {
+            // Le check réactif (à chaque réponse) et le minuteur de sécurité en
+            // mode minutes peuvent tous deux détecter la fin de partie : on ne
+            // veut déclencher end_game qu'une seule fois.
+            if (gameHasEnded || progression.size === 0) return 0;
 
             let all_finished = true;
             for (const [key, value] of progression.entries()) {
@@ -671,18 +696,17 @@
                     if (value.answered < question_number) {
                         all_finished = false;
                         break;
-                        return 0;
                     }
                 } else {
                     if (!((Date.now() - value.epoch) > minutes * 60 * 1000)) {
                         all_finished = false;
                         break;
-                        return 0;
                     }
                 }
             }
             if (all_finished) {
                 console.log("All players finished the game");
+                gameHasEnded = true;
                 socket.send(JSON.stringify({
                     type: "end_game",
                     game_id: Gamecode,
@@ -690,23 +714,29 @@
                 }));
                 return 1;
             }
+            return 0;
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById("question_dev_form").addEventListener("submit", (event) => {
-                event.preventDefault();
-                const formData = new FormData(event.target);
+        function onGameEnded() {
+            console.log("Game ended");
+            if (minutesModeInterval) {
+                clearInterval(minutesModeInterval);
+                minutesModeInterval = null;
+            }
+            const sea = document.getElementById("sea");
+            if (sea) sea.style.display = "none";
+            const title = document.getElementById("title_finished");
+            if (title) title.textContent = "Partie terminée, voici le classement";
+            audioElement.src = "assets/finished.mp3"
+            audioElement.play();
+            audioElement.loop = false;
+        }
 
-                socket.send(JSON.stringify({
-                    type: "send_question",
-                    text: formData.get("question"),
-                    choices: [formData.get("a1").replace("*", "x"), formData.get("a2").replace("*", "x"), formData.get("a3").replace("*", "x")],
-                    correctAnswer: formData.get("answer"),
-                    game_id: Gamecode
-                }));
-            });
-
-        });
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = String(str);
+            return div.innerHTML;
+        }
 
         function buildWebSocketUrl() {
             const loc = window.location;
@@ -757,14 +787,14 @@
                         window.addPlayer({
                             id: data.pseudo,
                             name: data.pseudo.replace('-', ' '),
-                            avatarUrl: `https://api.dicebear.com/10.x/loops/svg?seed=${data.pseudo}`,
+                            avatarUrl: `https://api.dicebear.com/10.x/loops/svg?seed=${encodeURIComponent(data.pseudo)}`,
                             points: 0,
                         });
 
                         let display_user_div = document.createElement("div");
                         display_user_div.className = "display_user_div";
                         display_user_div.id = "display_user_div_" + data.pseudo;
-                        display_user_div.innerHTML = `<img src="https://api.dicebear.com/10.x/loops/svg?seed=${data.pseudo}" alt="${data.pseudo}"><p class="user-pseudo">${data.pseudo}</p>`;
+                        display_user_div.innerHTML = `<img src="https://api.dicebear.com/10.x/loops/svg?seed=${encodeURIComponent(data.pseudo)}" alt="${escapeHtml(data.pseudo)}"><p class="user-pseudo">${escapeHtml(data.pseudo)}</p>`;
 
 
                         const element = document.getElementById("playerList");
@@ -776,54 +806,37 @@
 
 
 
-                    case 'player_answered':
+                    case 'player_answered': {
                         console.log("Player answered: ", data.pseudo, " with answer: ", data.answer, " correct: ", data.correct);
                         const user = progression.get(data.pseudo);
+                        if (!user) break; // joueur inconnu (déjà parti ?)
+                        const avatarUrl = `https://api.dicebear.com/10.x/loops/svg?seed=${encodeURIComponent(data.pseudo)}`;
+                        const safePseudo = escapeHtml(data.pseudo);
+                        const ship = document.getElementById("ship-" + data.pseudo);
+                        const crew = document.getElementById("ship-crew-" + data.pseudo);
+
                         if (!playing_with_q_number) {
-                            console.log("We are playing with minutes. Users currently have " + minutes * 60 + " seconds to answer maximum of correct questions");
-                            console.log("Time will be less counted than number of correct questions.");
-                            console.log(user.epoch);
-                            console.log(Date.now());
-                            console.log(data.pseudo + " is curently at " + (Date.now() - user.epoch) + " seconds of game");
                             if (Date.now() - user.epoch > minutes * 60 * 1000) {
-                                console.log("Unfortunately for him, time is over, this question cannot be counted");
+                                console.log(data.pseudo + " : temps écoulé, réponse non comptabilisée");
                             } else {
-                                console.log("Great, just in time");
                                 user.answered++;
-                                console.log("OK, number of question increased, now let's see if it's correct.");
                                 if (data.correct) {
-                                    console.log("Great, it's correct");
                                     user.correct++;
-                                    user.points = 200 * user.correct / user.answered
-                                } else {
-                                    console.log("Unfortunately, NO");
+                                    user.points = 200 * user.correct / user.answered;
                                 }
                                 window.updatePlayerScore(data.pseudo, user.points);
-                                let percent = (100 * ((Date.now() - user.epoch) / (minutes * 60))).toFixed(2);
-                                const ship = document.getElementById("ship-" + data.pseudo);
-                                ship.style.setProperty("--ship-x", percent + "%");
-                                const crew = document.getElementById("ship-crew-" + data.pseudo);
-                                crew.setAttribute(
-                                    "aria-label",
-                                    data.pseudo + ", " + percent + "% of the race"
-                                );
+                                const percent = (100 * ((Date.now() - user.epoch) / (minutes * 60 * 1000))).toFixed(2);
+                                if (ship) ship.style.setProperty("--ship-x", percent + "%");
+                                if (crew) crew.setAttribute("aria-label", data.pseudo + ", " + percent + "% of the race");
                                 socket.send(JSON.stringify({
                                     type: "percent_info",
                                     to_pseudo: data.pseudo,
                                     percent: percent,
                                     game_id: Gamecode
                                 }));
-                                setTimeout(() => {
-                                    send_question(data.pseudo);
-                                }, 2500);
-
-
-
-
-
+                                setTimeout(() => send_question(data.pseudo), 2500);
                             }
-                        }
-                        else {
+                        } else {
                             user.answered++;
                             if (data.correct) {
                                 user.correct++;
@@ -832,163 +845,109 @@
                 <div class="notification">
                     <div class="chat">
                     <div class="profile">
-                        <img src="https://api.dicebear.com/10.x/loops/svg?seed=` + data.pseudo + `" alt="">
+                        <img src="${avatarUrl}" alt="">
                     </div>
                     <div class="message">
-                        ` + data.pseudo + ` a correctement répondu à la question. En attente de la prochaine question.
-                    </div>
-                    <div class="user_game">
-                        ` + data.pseudo + `
+                        ${safePseudo} a correctement répondu à la question. En attente de la prochaine question.
                     </div>
                     </div>
                 </div>`;
-
                             } else {
                                 console.log("Player answered incorrectly: ", data.pseudo);
-                                if (sound_effects_on) {
-                                    let sound_var = `                     <audio autoplay>
-                        <source src="assets/fail.mp3" type="audio/mpeg">
-                    Your browser does not support the audio element.
-                    </audio>`;
-                                }
-                                else {
-                                    let sound_var = "";
-                                }
+                                const sound_var = sound_effects_on
+                                    ? `<audio autoplay><source src="assets/fail.mp3" type="audio/mpeg">Your browser does not support the audio element.</audio>`
+                                    : "";
 
                                 container.innerHTML = sound_var + `
-
                     <div class="notification">
                         <div class="chat">
                         <div class="profile">
-                            <img src="https://api.dicebear.com/10.x/loops/svg?seed=` + data.pseudo + `" alt="">
+                            <img src="${avatarUrl}" alt="">
                         </div>
                         <div class="message">
-                            ` + data.pseudo + ` à raté. En attente de la prochaine question.
-                        </div>
-                        <div _game">
-                            ` + data.pseudo + `
+                            ${safePseudo} à raté. En attente de la prochaine question.
                         </div>
                         </div>
                     </div>`;
                             }
 
-                            setTimeout(() => {
-                                container.innerHTML = "";
-                            }, 5000);
+                            setTimeout(() => { container.innerHTML = ""; }, 5000);
 
                             const time = (Date.now() - user.epoch) / 1000;
-
                             user.points = 1000 * (user.correct / question_number) * (question_number / time);
                             window.updatePlayerScore(data.pseudo, Math.floor(user.points));
 
-
                             if (user.answered < question_number) {
-                                setTimeout(() => {
-                                    send_question(data.pseudo);
-                                }, 2500);
-                            }
-                            else {
-
+                                setTimeout(() => send_question(data.pseudo), 2500);
+                            } else {
                                 console.log("Player finished all questions: ", data.pseudo);
-                                if (sound_effects_on) {
-                                    container.innerHTML = `
-                    <div class="notification">
-                        <audio autoplay>
-                            <source src="assets/victory.mp3" type="audio/mpeg">
-                        Your browser does not support the audio element.
-                        </audio>
-                        <div class="chat">
-                        <div class="profile">
-                            <img src="https://api.dicebear.com/10.x/loops/svg?seed=` + data.pseudo + `" alt="">
-                        </div>
-                        <div class="message">
-                            ` + data.pseudo + ` a terminé toutes les questions. Score: ` + user.correct + ` / ` + question_number + ` Points = ` + user.points + `
-                        </div>
-                        <div class="user_game">
-                            ` + data.pseudo + `
-                        </div>
-                        </div>
-                    </div>`;
-                                } else {
-                                    container.innerHTML = `
+                                const victorySound = sound_effects_on
+                                    ? `<audio autoplay><source src="assets/victory.mp3" type="audio/mpeg">Your browser does not support the audio element.</audio>`
+                                    : "";
+                                container.innerHTML = victorySound + `
                     <div class="notification">
                         <div class="chat">
                         <div class="profile">
-                            <img src="https://api.dicebear.com/10.x/loops/svg?seed=` + data.pseudo + `" alt="">
+                            <img src="${avatarUrl}" alt="">
                         </div>
                         <div class="message">
-                            ` + data.pseudo + ` a terminé toutes les questions. Score: ` + user.correct + ` / ` + question_number + ` Points = ` + user.points + `
-                        </div>
-                        <div class="user_game">
-                            ` + data.pseudo + `
+                            ${safePseudo} a terminé toutes les questions. Score : ${user.correct} / ${question_number} — ${Math.floor(user.points)} points
                         </div>
                         </div>
                     </div>`;
-                                }
-                                setTimeout(() => {
-                                    container.innerHTML = "";
-                                }, 5000);
+                                setTimeout(() => { container.innerHTML = ""; }, 5000);
                             }
 
-
-
-                            let percent = (100 * user.answered / question_number).toFixed(2);
-                            const ship = document.getElementById("ship-" + data.pseudo);
-                            ship.style.setProperty("--ship-x", percent + "%");
-
-
-
-                            const crew = document.getElementById("ship-crew-" + data.pseudo);
-                            crew.setAttribute(
-                                "aria-label",
-                                data.pseudo + ", " + percent + "% of the race"
-                            );
+                            const percent = (100 * user.answered / question_number).toFixed(2);
+                            if (ship) ship.style.setProperty("--ship-x", percent + "%");
+                            if (crew) crew.setAttribute("aria-label", data.pseudo + ", " + percent + "% of the race");
                             socket.send(JSON.stringify({
                                 type: "percent_info",
                                 to_pseudo: data.pseudo,
                                 percent: percent,
                                 game_id: Gamecode
                             }));
-
                         }
                         if (verify_game_ended()) {
-                            console.log("Game ended");
-                            document.getElementById("sea").style.display = "none";
-                            document.getElementById("title_finished").textContent = "It's finished, heres the score";
-                            audioElement.src = "assets/finished.mp3"
-                            audioElement.play();
-                            audioElement.loop = false;
+                            onGameEnded();
                         }
-
-
-
-
                         break;
-                    case 'client_left':
-
+                    }
+                    case 'client_left': {
                         console.log("Client left: ", data.pseudo, " with id: ", data.id);
                         const displayUserDiv = document.getElementById("display_user_div_" + data.pseudo);
                         window.removePlayer(data.pseudo);
                         if (displayUserDiv) displayUserDiv.remove();
+
+                        // Sans ça, une partie en mode "nombre de questions" ne peut
+                        // jamais se terminer si un joueur quitte avant d'avoir fini
+                        // (verify_game_ended() l'attendrait indéfiniment).
+                        progression.delete(data.pseudo);
+                        const leftShip = document.getElementById("ship-" + data.pseudo);
+                        if (leftShip) leftShip.remove();
+
+                        const leftAvatarUrl = `https://api.dicebear.com/10.x/loops/svg?seed=${encodeURIComponent(data.pseudo)}`;
+                        const leftSafePseudo = escapeHtml(data.pseudo);
                         container.innerHTML = `
                 <div class="notification">
                     <div class="chat">
                     <div class="profile">
-                        <img src="https://api.dicebear.com/10.x/loops/svg?seed=` + data.pseudo + `" alt="">
+                        <img src="${leftAvatarUrl}" alt="">
                     </div>
                     <div class="message">
-                        ` + data.pseudo + ` Nous a quité. A la prochaine ` + data.pseudo + `!
-                    </div>
-                    <div class="user">
-                        ` + data.pseudo + `
+                        ${leftSafePseudo} nous a quitté. À la prochaine, ${leftSafePseudo} !
                     </div>
                     </div>
                 </div>`;
                         setTimeout(() => {
                             container.innerHTML = "";
                         }, 5000);
+
+                        if (verify_game_ended()) {
+                            onGameEnded();
+                        }
                         break;
-                        break;
+                    }
                     default:
                         console.warn('Type de message WS inconnu :', data.type);
                 }
@@ -1155,11 +1114,20 @@
                     const row = document.createElement('div');
                     row.className = 'user';
                     row.id = id;
-                    row.innerHTML = `
-      <p class="name">${name}</p>
-      <img src="${avatarUrl}" alt="">
-      <p class="points">${points} points</p>
-    `;
+
+                    const nameEl = document.createElement('p');
+                    nameEl.className = 'name';
+                    nameEl.textContent = name;
+
+                    const img = document.createElement('img');
+                    img.src = avatarUrl;
+                    img.alt = '';
+
+                    const pointsEl = document.createElement('p');
+                    pointsEl.className = 'points';
+                    pointsEl.textContent = `${points} points`;
+
+                    row.append(nameEl, img, pointsEl);
                     board.appendChild(row);
                 };
 
@@ -1179,7 +1147,313 @@
         });
     </script>
     <style>
-        @import url("https://fonts.googleapis.com/css?family=Lato:400i,600");
+        :root {
+            --sea-deep: #072D3B;
+            --sea-mid: #0E4C5E;
+            --sea-light: #1C7293;
+            --parchment: #F3E5C3;
+            --parchment-dark: #E4D0A0;
+            --gold: #D4A72C;
+            --wood: #5A3A22;
+            --coral: #C7502A;
+            --ink: #26160A;
+            --success: #3C8562;
+            --danger: #B5482F;
+            --shadow: 0 18px 40px rgba(2, 15, 20, .45);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(ellipse at top, rgba(255, 235, 180, .18), transparent 55%),
+                linear-gradient(180deg, var(--sea-mid) 0%, var(--sea-deep) 55%, #041C25 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 32px 16px 100px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Pirata One', cursive;
+            color: var(--wood);
+            margin: 0 0 6px;
+            text-shadow: 1px 1px 0 rgba(212, 167, 44, .3);
+        }
+
+        h2 { font-size: 1.6rem; }
+        h3 { font-size: 1.2rem; margin-top: 18px; }
+        h4 {
+            font-family: 'Special Elite', monospace;
+            font-size: .78rem;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: #6b5636;
+            text-shadow: none;
+            margin: 16px 0 8px;
+        }
+
+        /* ---------- Cartes principales (écrans) ---------- */
+        #ToHide, #players, #billboard {
+            width: 100%;
+            max-width: 640px;
+            background: var(--parchment);
+            background-image:
+                radial-gradient(circle at 12% 18%, rgba(90, 58, 34, .06), transparent 40%),
+                radial-gradient(circle at 88% 82%, rgba(90, 58, 34, .08), transparent 45%);
+            border: 3px solid var(--wood);
+            border-radius: 20px;
+            padding: 32px 28px;
+            box-shadow: var(--shadow), inset 0 0 0 6px rgba(90, 58, 34, .08);
+        }
+
+        #billboard {
+            display: none;
+        }
+
+        #up {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .eyebrow {
+            font-family: 'Special Elite', monospace;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            font-size: 12px;
+            color: var(--coral);
+            margin: 0 0 8px;
+        }
+
+        .subtitle {
+            font-family: 'Special Elite', monospace;
+            font-size: 13px;
+            color: #5c4a30;
+            margin: 0 0 22px;
+        }
+
+        #choice {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            max-width: 320px;
+        }
+
+        /* ---------- Boutons ---------- */
+        button {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            font-size: 15px;
+            background: linear-gradient(180deg, var(--coral), #A63D1E);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 14px 20px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #7C2C15, 0 10px 16px rgba(0, 0, 0, .22);
+            transition: transform .12s ease, box-shadow .12s ease;
+        }
+
+        button:hover {
+            filter: brightness(1.08);
+        }
+
+        button:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #7C2C15, 0 4px 8px rgba(0, 0, 0, .2);
+        }
+
+        button:disabled {
+            opacity: .55;
+            cursor: not-allowed;
+            filter: grayscale(.3);
+        }
+
+        button.secondary {
+            background: linear-gradient(180deg, #FFFBF0, #F0E4C8);
+            color: var(--wood);
+            box-shadow: 0 6px 0 var(--wood), 0 10px 16px rgba(0, 0, 0, .18);
+        }
+
+        button.secondary:active {
+            box-shadow: 0 2px 0 var(--wood), 0 4px 8px rgba(0, 0, 0, .16);
+        }
+
+        #startGameBtn, #startbtn {
+            width: 100%;
+            font-size: 17px;
+            margin-top: 8px;
+            background: linear-gradient(180deg, var(--success), #2A6247);
+            box-shadow: 0 6px 0 #1F4A34, 0 10px 16px rgba(0, 0, 0, .22);
+        }
+
+        #startGameBtn:active, #startbtn:active {
+            box-shadow: 0 2px 0 #1F4A34, 0 4px 8px rgba(0, 0, 0, .2);
+        }
+
+        /* Anciennes classes conservées pour ne pas retoucher chaque bouton HTML */
+        .glow-on-hover {}
+
+        /* ---------- Sélecteurs de paramètres (chips) ---------- */
+        #params {
+            display: none;
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .param-section {
+            text-align: left;
+            margin-bottom: 6px;
+        }
+
+        .param-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .param-grid button {
+            flex: 0 1 auto;
+            background: #FFFBF0;
+            color: var(--wood);
+            border: 2px solid var(--wood);
+            box-shadow: none;
+            font-size: 13px;
+            padding: 10px 16px;
+            border-radius: 999px;
+            font-weight: 600;
+        }
+
+        .param-grid button:active {
+            transform: translateY(1px);
+        }
+
+        .param-grid button.selected {
+            background: var(--success);
+            border-color: #1F4A34;
+            color: #fff;
+            box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .5);
+        }
+
+        .tag {
+            display: inline-block;
+            background: var(--gold);
+            color: var(--ink);
+            font-family: 'Special Elite', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 999px;
+            margin: 4px 0;
+        }
+
+        #startWarning, #startGameWarning {
+            margin-top: 12px;
+        }
+
+        .form-warning {
+            color: var(--danger);
+            font-weight: 700;
+            font-size: 13px;
+            min-height: 1.2em;
+        }
+
+        /* ---------- Rejoindre une partie ---------- */
+        #game_joining_form {
+            display: none;
+            width: 100%;
+            max-width: 320px;
+        }
+
+        #game_joining_form form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        #game_joining_form label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--wood);
+            text-align: left;
+        }
+
+        #game_joining_form input[type=text] {
+            font-family: 'Poppins', sans-serif;
+            font-size: 16px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 2px solid var(--wood);
+            background: #FFFBF0;
+            color: var(--ink);
+        }
+
+        #game_joining_form input[type=submit] {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            background: linear-gradient(180deg, var(--coral), #A63D1E);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 20px;
+            cursor: pointer;
+        }
+
+        /* ---------- Salle d'attente / QR code ---------- */
+        #players {
+            display: none;
+        }
+
+        #qrcode {
+            display: flex;
+            justify-content: center;
+            margin: 4px 0 14px;
+        }
+
+        #qrcode img, #qrcode canvas {
+            border-radius: 12px;
+            border: 4px solid var(--wood);
+            background: #fff;
+            padding: 8px;
+        }
+
+        #inputgameCode {
+            font-family: 'Special Elite', monospace;
+            font-size: 13px;
+            font-weight: 400;
+            color: #5c4a30;
+            text-shadow: none;
+            max-width: 480px;
+            margin: 0 auto 20px;
+        }
+
+        #playerList {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            padding: 0;
+            margin: 12px 0 20px;
+            min-height: 40px;
+        }
 
         .display_user_div {
             display: flex;
@@ -1188,14 +1462,11 @@
             gap: 4px;
             width: 110px;
             padding: 14px 10px 12px;
-            background: #F3E5C3;
-            /* parchemin */
-            border: 2px solid #5A3A22;
-            /* bois */
+            background: var(--parchment-dark);
+            border: 2px solid var(--wood);
             border-radius: 14px;
             box-shadow: 0 6px 14px rgba(0, 0, 0, .25);
             transition: transform .15s ease, box-shadow .15s ease;
-            font-family: 'Poppins', sans-serif;
         }
 
         .display_user_div:hover {
@@ -1208,8 +1479,7 @@
             height: 64px;
             border-radius: 50%;
             object-fit: cover;
-            border: 3px solid #D4A72C;
-            /* golden color */
+            border: 3px solid var(--gold);
             background: #fff;
             margin-bottom: 4px;
         }
@@ -1218,278 +1488,84 @@
             margin: 0;
             font-weight: 700;
             font-size: 13px;
-            color: #5A3A22;
+            color: var(--wood);
             max-width: 100%;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            /* Cut if pseudo is to long. Should be improved with a turning style carousel for the letter */
         }
 
-        .display_user_div .user-name {
-            margin: 0;
-            font-size: 11px;
-            font-weight: 400;
-            color: #7a6446;
-            max-width: 100%;
-            overflow: hidden;
-            /* Probably to delete since we only use pseudo */
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-
-
-
-        #notification {
+        /* ---------- Notification plein écran (réponse d'un joueur) ---------- */
+        .notification {
             position: fixed;
-            left: 0px;
-            top: 0px;
+            inset: 0;
             width: 100vw;
             height: 100vh;
-            filter: blur(10px);
-            transform: scale(1.2);
-            animation: getBlurry 0.75s linear;
-            /*background: url('https://images.unsplash.com/photo-1518002196537-b51e4e4d0f65?ixlib=rb-0.3.5&q=80&fm=jpg&crop=entropy&cs=tinysrgb&w=400&fit=max&ixid=eyJhcHBfaWQiOjE0NTg5fQ&s=57ea43a4c76c7df170d96f844ea7c603'); */
-            background-size: cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            background: rgba(4, 20, 26, .55);
+            backdrop-filter: blur(6px);
+            animation: getBlurry .4s ease;
+            pointer-events: none;
         }
 
         @keyframes getBlurry {
-            0% {
-                filter: blur(0px);
-                transform: scale(1);
-            }
-
-            100% {
-                filter: blur(15px);
-                transform: scale(1.2);
-            }
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         .chat {
             position: relative;
-            width: 40vw;
-            min-width: 400px;
-            max-width: 80%;
-            animation: popFromBottom 0.5s ease-in-out;
+            width: min(90vw, 560px);
+            animation: popFromBottom .4s cubic-bezier(.22, 1, .36, 1);
+            display: flex;
+            align-items: center;
         }
 
         @keyframes popFromBottom {
-            0% {
-                transform: translateY(300px) scale(0);
-            }
-
-            100% {
-                transform: translateY(0px) scale(1);
-            }
+            0% { transform: translateY(60px) scale(.8); opacity: 0; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
         }
 
-        img {
-            height: 22vmin;
-            margin-left: -30%;
-        }
-
-        .profile {
-            width: 22vmin;
-            height: 22vmin;
+        .chat .profile {
+            width: 90px;
+            height: 90px;
             border-radius: 50%;
             overflow: hidden;
-            position: absolute;
-            left: -16vmin;
-            top: -1vmin;
-            border: 1vmin solid #fff;
-        }
-
-        .message {
-            background: #ffe271;
-            padding: 2vmin 5vmin 2vmin 10vmin;
-            border-radius: 0px 50px 50px 0px;
-            font-size: 3vmin;
-            text-align: left;
-        }
-
-        .user_game {
-            text-align: left;
-            padding: 2px 30px 5px 60px;
-            border-radius: 0px 0px 20px;
-            font-size: 3.2vmin;
-            background: #fff;
-            color: #83aebd;
-            float: left;
-            font-weight: 600;
-            font-style: normal;
-        }
-
-
-        h1 {
-            text-align: center;
-            color: black;
-        }
-
-        h2 {
-            text-align: center;
-            color: black;
-        }
-
-        h3 {
-            text-align: center;
-            color: black;
-        }
-
-        #up {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        #params {
-            display: block;
-            justify-content: center;
-            align-items: center;
-            display: none;
-        }
-
-        #qrcode {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        body {
-            background-color: powderblue;
-            font-family: courier;
-            align-items: center;
-            display: flex;
-            justify-content: center;
-            background-image: url('assets/bg.png');
-            background-size: cover;
-            background-size: cover;
-            /* remplit tout l’écran */
-            background-position: center;
-            /* centrée */
-            background-repeat: no-repeat;
-            /* pas répétée */
-            background-attachment: fixed;
-            /* reste fixe */
-            padding: 20vmin 20vmin 20vmin 30vmin;
-            text-align: center;
-            font-family: 'Lato';
-            color: rgba(0, 0, 0, 0.6);
-            font-weight: 400;
-            font-style: italic;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        button {
-            background-color: #0000FF;
-            border: 5px;
-            color: white;
-            padding: 15px 32px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            cursor: pointer;
-            transition-duration: 0.4s;
-            border-radius: 10px;
-            border: black 2px solid;
-            margin: 20px;
-            animation-name: HeavyNoticeAnimation;
-            animation-duration: 4s;
-        }
-
-        button:hover {
-            background-color: #4CAF50;
-            /* Green */
-            color: white;
-            box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.6)
-        }
-
-        #startbtn:hover {
-            background-color: #FF0000;
-            /* Green */
-            color: white;
-            box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.6)
-        }
-
-        #players {
-            display: none;
-        }
-
-        .glow-on-hover {
-            width: 220px;
-            height: 50px;
-            border: none;
-            outline: none;
-            color: #fff;
-            cursor: pointer;
             position: relative;
-            z-index: 0;
-            border-radius: 10px;
-            align-items: center;
-            justify-content: center;
-            -ms-transform: translateY(-50%);
-            transform: translateY(-50%);
+            z-index: 1;
+            border: 5px solid #fff;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, .3);
+            flex: 0 0 auto;
         }
 
-        .glow-on-hover:before {
-            content: '';
-            background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
-            position: absolute;
-            top: -2px;
-            left: -2px;
-            background-size: 400%;
-            z-index: -1;
-            filter: blur(5px);
-            width: calc(100% + 8px);
-            height: calc(100% + 10px);
-            animation: glowing 20s linear infinite;
-            opacity: 0;
-            transition: opacity .3s ease-in-out;
-            border-radius: 10px;
-        }
-
-        .glow-on-hover:active {
-            color: #000
-        }
-
-        .glow-on-hover:active:after {
-            background: transparent;
-        }
-
-        .glow-on-hover:hover:before {
-            opacity: 1;
-        }
-
-        .glow-on-hover:after {
-            z-index: -1;
-            content: '';
-            position: absolute;
+        .chat .profile img {
             width: 100%;
             height: 100%;
-            background: #111;
-            left: 0;
-            top: 0;
-            border-radius: 10px;
+            object-fit: cover;
         }
 
-        @keyframes glowing {
-            0% {
-                background-position: 0 0;
-            }
-
-            50% {
-                background-position: 400% 0;
-            }
-
-            100% {
-                background-position: 0 0;
-            }
+        .chat .message {
+            background: var(--parchment);
+            padding: 18px 24px 18px 42px;
+            margin-left: -30px;
+            border-radius: 0 24px 24px 0;
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--ink);
+            text-align: left;
+            box-shadow: var(--shadow);
+            flex: 1 1 auto;
         }
 
-        #questions_dev {
-            justify-content: center;
-            align-items: center;
+        /* ---------- Course de bateaux ---------- */
+        #sea {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 3;
         }
 
         .ship {
@@ -1500,6 +1576,7 @@
             z-index: 2;
             animation: bob 4s ease-in-out infinite;
             filter: drop-shadow(0 6px 6px rgba(0, 0, 0, .4));
+            transition: left 1s ease-out;
         }
 
         /* Badge utilisateur accolé au bateau */
@@ -1512,10 +1589,11 @@
             font-size: 12px;
             line-height: 18px;
             text-align: center;
-            background: #F3E5C3;
-            border: 2px solid #5A3A22;
+            background: var(--parchment);
+            border: 2px solid var(--wood);
             border-radius: 50%;
             cursor: pointer;
+            pointer-events: auto;
             transition: transform .2s ease, box-shadow .2s ease;
             box-shadow: 0 3px 6px rgba(0, 0, 0, .3);
         }
@@ -1562,17 +1640,6 @@
             transform: translateX(-50%) translateY(0);
         }
 
-
-        #billboard {
-            display: none;
-        }
-
-        #h1_scoreboard {
-            font-family: 'Pirata One', cursive;
-            color: var(--gold);
-            margin: 0;
-            text-shadow: 2px 2px 0 rgba(0, 0, 0, .35);
-        }
 
         /* ---------- Scoreboard ---------- */
         #real_time_scoreboard {
@@ -1735,194 +1802,6 @@
             transition: transform .5s cubic-bezier(.22, 1, .36, 1);
         }
 
-        /* ---------- Contrôles de démo ---------- */
-        .demo-controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-            max-width: 420px;
-        }
-
-        .demo-controls button {
-            font-family: 'Poppins', sans-serif;
-            font-size: 13px;
-            font-weight: 600;
-            background: var(--coral);
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 14px;
-            cursor: pointer;
-        }
-
-        .demo-controls button:active {
-            transform: translateY(1px);
-        }
-
-        .tag {
-            display: inline-block;
-            border-radius: 3px;
-            padding: .2em .5em .3em;
-            border-radius: 2px;
-            background: var(--tag-bg);
-            color: var(--text-color);
-            font-weight: 600;
-            margin: .25em .1em
-        }
-
-        h1.tag {
-            margin-left: 0;
-            margin-right: 0
-        }
-
-        .tag-sm {
-            font-size: .7em;
-            display: inline-block;
-            letter-spacing: .15ch;
-            font-weight: 400
-        }
-
-        .tag-lg {
-            font-size: 1.2em;
-            border-radius: 4px
-        }
-
-        .tag-bg {
-            background: var(--background)
-        }
-
-        .tag-green,
-        .tag-pro {
-            background: var(--green);
-            color: #fff
-        }
-
-        .tag-purple {
-            background: var(--purple);
-            color: #fff
-        }
-
-        .tag-contrast {
-            background: var(--text-color);
-            color: var(--background)
-        }
-
-        .tag-javascript {
-            background: #f0db4f;
-            color: #000
-        }
-
-        .tag-typescript {
-            background: #2775c3;
-            color: #fff
-        }
-
-        .tag-angular {
-            background: #dc0530;
-            color: #fff
-        }
-
-        .tag-firebase {
-            background: #ffcb2b;
-            color: #12181a
-        }
-
-        .tag-vue {
-            background: #41b883;
-            color: #35495e
-        }
-
-        .tag-rxjs {
-            background: var(--pink);
-            color: var(--gray5)
-        }
-
-        .tag-node {
-            background: #90c53f;
-            color: #46483d
-        }
-
-        .tag-cloud-functions {
-            background: var(--blue);
-            color: #fff
-        }
-
-        .tag-flutter {
-            background: #54c5f8;
-            color: #003b6c
-        }
-
-        .tag-google-maps {
-            background: #33a668;
-            color: #f8d845
-        }
-
-        .tag-android {
-            background: #a4c34a;
-            color: #fff
-        }
-
-        .tag-stripe {
-            color: #fff;
-            background: #6675e0
-        }
-
-        .tag-machine-learning {
-            color: #fff;
-            background: var(--purple-light)
-        }
-
-        .tag-python {
-            color: #ffda5d;
-            background: #3879ab
-        }
-
-        .tag-svelte {
-            color: #fff;
-            background: #ff3e00
-        }
-
-        .tag-react {
-            color: #00d8ff;
-            background: #222
-        }
-
-        .tag-ios {
-            color: #fff;
-            background: #000
-        }
-
-        .tag-minimum-viable-product,
-        .tag-mvp {
-            color: #fff;
-            background-image: linear-gradient(90deg, #ff8901, #db1d5f);
-            font-weight: 700
-        }
-
-        .tag-ionic {
-            background: #fff;
-            color: #4a8afc
-        }
-
-        .tag-nest {
-            color: #e0234e;
-            background: #000
-        }
-
-        .tag-graphql {
-            color: #fff;
-            background: #e10097
-        }
-
-        .tag-electron {
-            color: #313244;
-            background: #adecf3
-        }
-
-        #game_joining_form {
-            display: none;
-        }
     </style>
 
 </head>
@@ -1930,99 +1809,105 @@
 <body>
     <div id="container"></div>
     <div id="ToHide">
-        <h1>MathQuiz</h1>
-        <br>
         <div id="up">
-            <h1>Welcome on MathQuiz, pirate !</h1>
-            <h2> What would you like to do ?</h2>
+            <p class="eyebrow">Party quiz</p>
+            <h1>MathQuiz</h1>
+            <p class="subtitle">Bienvenue, pirate ! Que veux-tu faire ?</p>
             <div id="choice">
-                <button id="log_in">Log in (Not implemented yet)</button>
-                <button id="sign_up">Sign up (Not yet implemented)</button>
-                <button id="ngame" onclick="displaySelector()" class="glow-on-hover">Familly game</button>
-                <button id="join-game" class="glow-on-hover">Join a game</button>
+                <button id="log_in" class="secondary" disabled title="Pas encore implémenté">Log in</button>
+                <button id="sign_up" class="secondary" disabled title="Pas encore implémenté">Sign up</button>
+                <button id="ngame" onclick="displaySelector()">🏴‍☠️ Nouvelle partie</button>
+                <button id="join-game" class="secondary">Rejoindre une partie</button>
             </div>
         </div>
         <div id="game_joining_form">
             <form id="game_joining_code">
-                <label for="input_code">Enter code</label>
-                <input type="text" id="input_code" name="input_code">
-                <input type="submit">
+                <label for="input_code">Code de la partie</label>
+                <input type="text" id="input_code" name="input_code" placeholder="Ex. AB12CD">
+                <input type="submit" value="Rejoindre">
             </form>
         </div>
         <div id="params">
-            <h2>New online game</h2>
-            <br>
-            <h3>Calculation type</h3>
-            <button id="param11" onclick="selectParam('param11')">Additions</button>
-            <button id="param12" onclick="selectParam('param12')">Subtractions</button>
-            <button id="param13" onclick="selectParam('param13')">Multiplications</button>
-            <button id="param14" onclick="selectParam('param14')">Divisions</button>
-            <br>
-            <h3>Complexity selection</h3>
-            <button id="param21" onclick="selectParam('param21')">Only under a hundred</button>
-            <button id="param24" onclick="selectParam('param24')">Only under a thousand</button>
-            <button id="param22" onclick="selectParam('param22')">Multiplications only with simple numbers</button>
-            <button id="param23" onclick="selectParam('param23')">No decimal results</button>
-            <br>
-            <h3>General settings</h3>
-            <button id="param31" onclick="selectParam('param31')">QCM enabled</button>
-            <br>
-            <h4> Number of questions</h4>
-            <button id="param32" onclick="selectParam('param32')">5 questions</button>
-            <button id="param33" onclick="selectParam('param33')">10 questions</button>
-            <button id="param34" onclick="selectParam('param34')">15 questions</button>
-            <br>
-            <h4> OR time</h4>
-            <button id="param35" onclick="selectParam('param35')">1 minute</button>
-            <button id="param36" onclick="selectParam('param36')">3 minute</button>
-            <button id="param37" onclick="selectParam('param37')">7 minute</button>
-            <br>
-            <h4>Additional operations</h4>
-            <button id="param3" onclick="selectParam('param3')">Equation solving</button>
-            <button id="param4" onclick="selectParam('param4')">Simple pythagore</button>
-            <button id="param5" onclick="selectParam('param5')">Math general knowledge</button>
-            <h4>Sound effects</h4>
-            <button id="param51" onclick="selectParam('param51')">Enable fail/win sounds</button>
-            <button id="param52" onclick="selectParam('param52')">Kahoot music #1</button>
-            <button id="param53" onclick="selectParam('param53')">Kahoot music #2</button>
-            <button id="param54" onclick="selectParam('param54')">Tension and action music #3</button>
-            <button id="param55" onclick="selectParam('param55')">Epic and action music #4</button>
-            <p class="tag">Best -></p>
-            <button id="param56" onclick="selectParam('param56')">Strategic music #5</button>
-            <button id="param57" onclick="selectParam('param57')">Pop up music #6</button>
-            <br>
-            <button id="startbtn" onclick="startloginscreen()" class="glow-on-hover">Start</button>
+            <p class="eyebrow">Configuration</p>
+            <h2>Nouvelle partie</h2>
+
+            <div class="param-section">
+                <h4>Types de calcul</h4>
+                <div class="param-grid">
+                    <button id="param11" onclick="selectParam('param11')">Additions</button>
+                    <button id="param12" onclick="selectParam('param12')">Soustractions</button>
+                    <button id="param13" onclick="selectParam('param13')">Multiplications</button>
+                    <button id="param14" onclick="selectParam('param14')">Divisions</button>
+                </div>
+            </div>
+
+            <div class="param-section">
+                <h4>Difficulté</h4>
+                <div class="param-grid">
+                    <button id="param21" onclick="selectParam('param21')">Sous la centaine</button>
+                    <button id="param24" onclick="selectParam('param24')">Sous le millier</button>
+                    <button id="param22" onclick="selectParam('param22')">Multiplications simples</button>
+                </div>
+            </div>
+
+            <div class="param-section">
+                <h4>Nombre de questions</h4>
+                <div class="param-grid">
+                    <button id="param32" onclick="selectParam('param32')">5 questions</button>
+                    <button id="param33" onclick="selectParam('param33')">10 questions</button>
+                    <button id="param34" onclick="selectParam('param34')">15 questions</button>
+                </div>
+            </div>
+
+            <div class="param-section">
+                <h4>Ou bien, temps limite</h4>
+                <div class="param-grid">
+                    <button id="param35" onclick="selectParam('param35')">1 minute</button>
+                    <button id="param36" onclick="selectParam('param36')">3 minutes</button>
+                    <button id="param37" onclick="selectParam('param37')">7 minutes</button>
+                </div>
+            </div>
+
+            <div class="param-section">
+                <h4>Questions additionnelles</h4>
+                <div class="param-grid">
+                    <button id="param3" onclick="selectParam('param3')">Résolution d'équation</button>
+                    <button id="param4" onclick="selectParam('param4')">Pythagore</button>
+                    <button id="param5" onclick="selectParam('param5')">Culture générale math</button>
+                </div>
+            </div>
+
+            <div class="param-section">
+                <h4>Ambiance sonore</h4>
+                <div class="param-grid">
+                    <button id="param51" onclick="selectParam('param51')">Sons de victoire/échec</button>
+                    <button id="param52" onclick="selectParam('param52')">Musique #1</button>
+                    <button id="param53" onclick="selectParam('param53')">Musique #2</button>
+                    <button id="param54" onclick="selectParam('param54')">Musique #3</button>
+                    <button id="param55" onclick="selectParam('param55')">Musique #4</button>
+                    <button id="param56" onclick="selectParam('param56')">Musique #5</button>
+                    <button id="param57" onclick="selectParam('param57')">Musique #6</button>
+                </div>
+            </div>
+
+            <button id="startbtn" onclick="startloginscreen()">Lancer la partie</button>
+            <p id="startWarning" class="form-warning"></p>
         </div>
 
     </div>
     <div id="players">
+        <p class="eyebrow">Embarquement</p>
+        <h2>En attente des joueurs</h2>
         <div id="qrcode"></div>
         <h4 id="inputgameCode"></h4>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <h2>Players</h2>
         <ul id="playerList"></ul>
-
-
-        </ul>
-        <br>
-        <button id="startGameBtn" class="glow-on-hover">Start Game</button>
+        <p id="startGameWarning" class="form-warning"></p>
+        <button id="startGameBtn">Démarrer la partie</button>
     </div>
     <div id="sea">
     </div>
     <div id="billboard">
-        <h1 id="title_finished">Real time scoreboard</h1>
+        <h1 id="title_finished">Classement</h1>
 
         <div id="real_time_scoreboard">
 
@@ -2032,22 +1917,3 @@
 </body>
 
 </html>
-<script>
-    /*
-                <div class="user" id="Barbe-Noire">
-                <p class="name">Barbe-Noire</p>
-                <img src="https://api.dicebear.com/10.x/loops/svg?seed=Barbe-Noire" alt="">
-                <p class="points">500 points</p>
-                </div>
-                <div class="user" id="Anne-Bonny">
-                <p class="name">Anne Bonny</p>
-                <img src="https://api.dicebear.com/10.x/loops/svg?seed=Anne-Bonny" alt="">
-                <p class="points">380 points</p>
-                </div>
-                <div class="user" id="Jack-Sparrow">
-                <p class="name">Jack Sparrow</p>
-                <img src="https://api.dicebear.com/10.x/loops/svg?seed=Jack-Sparrow" alt="">
-                <p class="points">260 points</p>
-                </div>
-    */
-</script>
