@@ -1,5 +1,5 @@
 // server.js
-require('dotenv').config();
+require('dotenv').config({ override: true });
 const express = require('express');
 const http = require('http');
 const crypto = require('crypto');
