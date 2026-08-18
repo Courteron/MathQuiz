@@ -224,24 +224,29 @@
                     document.getElementById("param21").classList.remove('selected');
                     document.getElementById("param24").classList.remove('selected');
                 }
-                if (["param61", "param62", "param63"].includes(id)) {
-                    for (let i = 61; i <= 63; i++) {
-                        document.getElementById("param" + i).classList.remove('selected');
-                    }
-                }
                 if (["param71", "param72", "param73"].includes(id)) {
                     for (let i = 71; i <= 73; i++) {
                         document.getElementById("param" + i).classList.remove('selected');
                     }
                 }
-                btn.classList.toggle('selected');
+
+                // 2/3/4 équipes forment un groupe exclusif, mais recliquer sur
+                // l'équipe déjà sélectionnée la désélectionne (désactive le mode
+                // équipes) au lieu de la garder forcée à "selected".
                 if (["param61", "param62", "param63"].includes(id)) {
+                    const wasSelected = btn.classList.contains('selected');
+                    for (let i = 61; i <= 63; i++) {
+                        document.getElementById("param" + i).classList.remove('selected');
+                    }
+                    const isSelected = !wasSelected;
+                    if (isSelected) btn.classList.add('selected');
                     const count = { param61: 2, param62: 3, param63: 4 }[id];
-                    const isSelected = btn.classList.contains('selected');
                     for (let i = 0; i < 4; i++) {
                         const input = document.getElementById("teamNameInput" + i);
                         if (input) input.style.display = (isSelected && i < count) ? 'block' : 'none';
                     }
+                } else {
+                    btn.classList.toggle('selected');
                 }
             }
 
@@ -335,16 +340,16 @@
                             case 57:
                                 music_id = 6;
                                 break;
-                            case 60:
-                                team_mode_enabled = 1;
-                                break;
                             case 61:
+                                team_mode_enabled = 1;
                                 team_count = 2;
                                 break;
                             case 62:
+                                team_mode_enabled = 1;
                                 team_count = 3;
                                 break;
                             case 63:
+                                team_mode_enabled = 1;
                                 team_count = 4;
                                 break;
                             case 71:
@@ -2116,9 +2121,6 @@
 
             <div class="param-section">
                 <h4>Mode équipes</h4>
-                <div class="param-grid">
-                    <button id="param60" onclick="selectParam('param60')">Activer le mode équipes</button>
-                </div>
                 <div class="param-grid">
                     <button id="param61" onclick="selectParam('param61')">2 équipes</button>
                     <button id="param62" onclick="selectParam('param62')">3 équipes</button>
