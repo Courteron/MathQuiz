@@ -356,6 +356,42 @@
       margin: 10px 0 0;
     }
 
+    .team-picker {
+      margin-bottom: 16px;
+    }
+
+    .team-picker-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--wood);
+      margin: 0 0 8px;
+    }
+
+    .team-picker-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .team-picker-btn {
+      flex: 0 1 auto;
+      border: 2px solid transparent;
+      border-radius: 999px;
+      padding: 10px 18px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+      cursor: pointer;
+    }
+
+    .team-picker-btn.selected {
+      border-color: var(--ink);
+      box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .6);
+    }
+
     button {
       font-family: 'Poppins', sans-serif;
       font-weight: 600;
@@ -768,6 +804,7 @@
       <h1>MathQuiz</h1>
       <p class="subtitle">Hoist the nickname, sailor, and join the crew.</p>
 
+      <div id="teamPicker" class="team-picker" style="display:none"></div>
       <form id="getPseudo" autocomplete="off">
         <label for="pseudo">Enter your pirate identity</label>
         <input type="text" id="pseudo" name="pseudo" placeholder="Ex. Barbe-Noire" required maxlength="24">
@@ -837,6 +874,34 @@
       let pseudo = '';
       let currentQuestionId = null;
       let socket = null;
+      let teamConfig = { enabled: false, teamCount: 0, mode: null, teams: [] };
+      let selectedTeamId = null;
+      const teamPicker = document.getElementById('teamPicker');
+
+      function renderTeamPicker() {
+        teamPicker.innerHTML = '';
+        const label = document.createElement('p');
+        label.className = 'team-picker-label';
+        label.textContent = 'Choisis ton équipe';
+        teamPicker.appendChild(label);
+        const grid = document.createElement('div');
+        grid.className = 'team-picker-grid';
+        teamConfig.teams.forEach((t) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'team-picker-btn';
+          btn.textContent = t.label;
+          btn.style.background = `var(${t.colorVar})`;
+          btn.addEventListener('click', () => {
+            selectedTeamId = t.id;
+            grid.querySelectorAll('.team-picker-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+          });
+          grid.appendChild(btn);
+        });
+        teamPicker.appendChild(grid);
+        teamPicker.style.display = 'block';
+      }
 
       // ---------- Construction de l'URL WebSocket ----------
       // Le serveur Node.js sert les fichiers statiques ET le WebSocket sur le
@@ -883,7 +948,8 @@
         if (socket && socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({
             type: 'pseudo', pseudo,
-            game_id: Gamecode
+            game_id: Gamecode,
+            teamId: selectedTeamId || undefined
           }));
         }
         // sinon le pseudo sera envoyé automatiquement à l'ouverture de la connexion
@@ -896,11 +962,13 @@
 
         socket.addEventListener('open', () => {
           setStatus('connected');
+          socket.send(JSON.stringify({ type: 'get_team_config', game_id: Gamecode }));
           // On envoie le pseudo dès que la connexion est prête.
           if (pseudo) {
             socket.send(JSON.stringify({
               type: 'pseudo', pseudo,
-              game_id: Gamecode
+              game_id: Gamecode,
+              teamId: selectedTeamId || undefined
 
             }));
           }
@@ -912,6 +980,10 @@
           catch (e) { console.warn('Message WS non-JSON ignoré :', event.data); return; }
 
           switch (data.type) {
+            case 'team_config':
+              teamConfig = data;
+              if (teamConfig.enabled && teamConfig.mode === 'self') renderTeamPicker();
+              break;
             case 'question':
               renderQuestion(data);
               break;
@@ -933,7 +1005,7 @@
               for (const [key, value] of scores_array) {
                 window.addPlayer({
                   id: key,
-                  name: key.replace('-', ' '),
+                  name: (value.label ?? key).replace('-', ' '),
                   avatarUrl: `https://api.dicebear.com/10.x/loops/svg?seed=${encodeURIComponent(key)}`,
                   points: Math.floor(value.points),
                 });
@@ -1071,6 +1143,10 @@
         event.preventDefault();
         const value = pseudoInput.value.trim();
         if (!value) return;
+        if (teamConfig.enabled && teamConfig.mode === 'self' && !selectedTeamId) {
+          pseudoError.textContent = "Choisis une équipe avant d'embarquer.";
+          return;
+        }
         pseudoError.textContent = '';
         joinGame(value);
       });

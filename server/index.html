@@ -35,6 +35,12 @@
         let minutesModeInterval = null;
         let gameHasEnded = false;
         const char_list = ["A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P", "Q", "S", "D", "F", "G", "H", "J", "K", "L", "M", "W", "X", "C", "V", "B", "N", "-"];
+        const TEAM_COLORS = ["--sea-light", "--coral", "--gold", "--success"];
+        let team_mode_enabled = 0;
+        let team_count = 0;
+        let team_assign_mode = null; // 'self' | 'manual' | 'random'
+        let teams = [];
+        let teamAssignments = new Map(); // pseudo -> teamId
 
 
         const math_general_questions = [
@@ -218,7 +224,25 @@
                     document.getElementById("param21").classList.remove('selected');
                     document.getElementById("param24").classList.remove('selected');
                 }
+                if (["param61", "param62", "param63"].includes(id)) {
+                    for (let i = 61; i <= 63; i++) {
+                        document.getElementById("param" + i).classList.remove('selected');
+                    }
+                }
+                if (["param71", "param72", "param73"].includes(id)) {
+                    for (let i = 71; i <= 73; i++) {
+                        document.getElementById("param" + i).classList.remove('selected');
+                    }
+                }
                 btn.classList.toggle('selected');
+                if (["param61", "param62", "param63"].includes(id)) {
+                    const count = { param61: 2, param62: 3, param63: 4 }[id];
+                    const isSelected = btn.classList.contains('selected');
+                    for (let i = 0; i < 4; i++) {
+                        const input = document.getElementById("teamNameInput" + i);
+                        if (input) input.style.display = (isSelected && i < count) ? 'block' : 'none';
+                    }
+                }
             }
 
         }
@@ -311,6 +335,27 @@
                             case 57:
                                 music_id = 6;
                                 break;
+                            case 60:
+                                team_mode_enabled = 1;
+                                break;
+                            case 61:
+                                team_count = 2;
+                                break;
+                            case 62:
+                                team_count = 3;
+                                break;
+                            case 63:
+                                team_count = 4;
+                                break;
+                            case 71:
+                                team_assign_mode = 'self';
+                                break;
+                            case 72:
+                                team_assign_mode = 'manual';
+                                break;
+                            case 73:
+                                team_assign_mode = 'random';
+                                break;
                         }
                     }
                 }
@@ -339,7 +384,28 @@
                 if (startWarning) startWarning.textContent = "Sélectionne au moins un type de calcul avant de démarrer !";
                 return;
             }
+            if (team_mode_enabled && (!team_count || !team_assign_mode)) {
+                if (startWarning) startWarning.textContent = "Choisis un nombre d'équipes et une méthode de répartition !";
+                return;
+            }
             if (startWarning) startWarning.textContent = "";
+
+            if (team_mode_enabled) {
+                teams = [];
+                for (let i = 0; i < team_count; i++) {
+                    const input = document.getElementById('teamNameInput' + i);
+                    const label = (input && input.value.trim()) || `Équipe ${i + 1}`;
+                    teams.push({ id: 'team_' + i, label, colorVar: TEAM_COLORS[i] });
+                }
+            }
+            socket.send(JSON.stringify({
+                type: 'set_team_config',
+                game_id: Gamecode,
+                enabled: !!team_mode_enabled,
+                teamCount: team_count,
+                mode: team_assign_mode,
+                teams: teams,
+            }));
 
             const div = document.getElementById("ToHide");
             if (div) div.style.display = 'none';
@@ -632,6 +698,10 @@
                     if (startGameWarning) startGameWarning.textContent = "Wait for players to join the game";
                     return;
                 }
+                if (team_mode_enabled && team_assign_mode === 'manual' && teamAssignments.size < progression.size) {
+                    if (startGameWarning) startGameWarning.textContent = "Assigne tous les joueurs à une équipe avant de lancer";
+                    return;
+                }
                 if (startGameWarning) startGameWarning.textContent = "";
                 socket.send(JSON.stringify({
                     type: "start_game",
@@ -684,6 +754,51 @@
 
         });
 
+        function buildScoresPayload() {
+            if (!team_mode_enabled) return [...progression];
+            const totals = new Map(teams.map(t => [t.id, { label: t.label, points: 0 }]));
+            for (const [pseudo, tId] of teamAssignments) {
+                const entry = totals.get(tId);
+                const player = progression.get(pseudo);
+                if (entry && player) entry.points += player.points;
+            }
+            return [...totals];
+        }
+
+        function refreshTeamScore(teamId) {
+            let sum = 0;
+            for (const [pseudo, tId] of teamAssignments) {
+                if (tId === teamId) {
+                    const p = progression.get(pseudo);
+                    if (p) sum += p.points;
+                }
+            }
+            window.updatePlayerScore(teamId, Math.floor(sum));
+        }
+
+        function recordTeamAssignment(pseudo, teamId) {
+            teamAssignments.set(pseudo, teamId);
+            if (!document.getElementById(teamId)) {
+                const t = teams.find(tt => tt.id === teamId);
+                window.addPlayer({
+                    id: teamId,
+                    name: t ? t.label : teamId,
+                    avatarUrl: `https://api.dicebear.com/10.x/loops/svg?seed=${encodeURIComponent(teamId)}`,
+                    points: 0,
+                });
+            }
+            refreshTeamScore(teamId);
+        }
+
+        function assignTeamToPlayer(pseudo, teamId) {
+            recordTeamAssignment(pseudo, teamId);
+            socket.send(JSON.stringify({ type: 'assign_team', game_id: Gamecode, pseudo, teamId }));
+        }
+
+        function pickRandomTeam() {
+            return teams[Math.floor(Math.random() * teams.length)].id;
+        }
+
         function verify_game_ended() {
             // Le check réactif (à chaque réponse) et le minuteur de sécurité en
             // mode minutes peuvent tous deux détecter la fin de partie : on ne
@@ -710,7 +825,7 @@
                 socket.send(JSON.stringify({
                     type: "end_game",
                     game_id: Gamecode,
-                    scores: [...progression]
+                    scores: buildScoresPayload()
                 }));
                 return 1;
             }
@@ -786,18 +901,53 @@
                             points: 0,
                         });
 
-                        window.addPlayer({
-                            id: data.pseudo,
-                            name: data.pseudo.replace('-', ' '),
-                            avatarUrl: `https://api.dicebear.com/10.x/loops/svg?seed=${encodeURIComponent(data.pseudo)}`,
-                            points: 0,
-                        });
+                        if (!team_mode_enabled) {
+                            window.addPlayer({
+                                id: data.pseudo,
+                                name: data.pseudo.replace('-', ' '),
+                                avatarUrl: `https://api.dicebear.com/10.x/loops/svg?seed=${encodeURIComponent(data.pseudo)}`,
+                                points: 0,
+                            });
+                        }
 
                         let display_user_div = document.createElement("div");
                         display_user_div.className = "display_user_div";
                         display_user_div.id = "display_user_div_" + data.pseudo;
                         display_user_div.innerHTML = `<img src="https://api.dicebear.com/10.x/loops/svg?seed=${encodeURIComponent(data.pseudo)}" alt="${escapeHtml(data.pseudo)}"><p class="user-pseudo">${escapeHtml(data.pseudo)}</p>`;
 
+                        if (team_mode_enabled) {
+                            if (team_assign_mode === 'manual') {
+                                const select = document.createElement("select");
+                                select.className = "team-select";
+                                const placeholder = document.createElement("option");
+                                placeholder.value = "";
+                                placeholder.textContent = "Équipe...";
+                                select.appendChild(placeholder);
+                                teams.forEach((t) => {
+                                    const opt = document.createElement("option");
+                                    opt.value = t.id;
+                                    opt.textContent = t.label;
+                                    select.appendChild(opt);
+                                });
+                                select.addEventListener('change', () => {
+                                    if (select.value) assignTeamToPlayer(data.pseudo, select.value);
+                                });
+                                display_user_div.appendChild(select);
+                            } else {
+                                const teamId = team_assign_mode === 'self' ? data.teamId : pickRandomTeam();
+                                const t = teams.find(tt => tt.id === teamId);
+                                const badge = document.createElement("span");
+                                badge.className = "team-badge";
+                                badge.textContent = t ? t.label : "?";
+                                if (t) badge.style.background = `var(${t.colorVar})`;
+                                display_user_div.appendChild(badge);
+                                if (team_assign_mode === 'self') {
+                                    recordTeamAssignment(data.pseudo, teamId);
+                                } else {
+                                    assignTeamToPlayer(data.pseudo, teamId);
+                                }
+                            }
+                        }
 
                         const element = document.getElementById("playerList");
 
@@ -826,7 +976,12 @@
                                     user.correct++;
                                     user.points = 200 * user.correct / user.answered;
                                 }
-                                window.updatePlayerScore(data.pseudo, user.points);
+                                if (team_mode_enabled) {
+                                    const tId = teamAssignments.get(data.pseudo);
+                                    if (tId) refreshTeamScore(tId);
+                                } else {
+                                    window.updatePlayerScore(data.pseudo, user.points);
+                                }
                                 const percent = (100 * ((Date.now() - user.epoch) / (minutes * 60 * 1000))).toFixed(2);
                                 if (ship) ship.style.setProperty("--ship-x", percent + "%");
                                 if (crew) crew.setAttribute("aria-label", data.pseudo + ", " + percent + "% of the race");
@@ -877,7 +1032,12 @@
 
                             const time = (Date.now() - user.epoch) / 1000;
                             user.points = 1000 * (user.correct / question_number) * (question_number / time);
-                            window.updatePlayerScore(data.pseudo, Math.floor(user.points));
+                            if (team_mode_enabled) {
+                                const tId = teamAssignments.get(data.pseudo);
+                                if (tId) refreshTeamScore(tId);
+                            } else {
+                                window.updatePlayerScore(data.pseudo, Math.floor(user.points));
+                            }
 
                             if (user.answered < question_number) {
                                 setTimeout(() => send_question(data.pseudo), 250);
@@ -1375,6 +1535,24 @@
             box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .5);
         }
 
+        #teamNamesSection {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        #teamNamesSection input[type=text] {
+            display: none;
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 2px solid var(--wood);
+            background: #FFFBF0;
+            color: var(--ink);
+        }
+
         .tag {
             display: inline-block;
             background: var(--gold);
@@ -1518,6 +1696,29 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+
+        .team-badge {
+            display: inline-block;
+            margin-top: 2px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+        }
+
+        .team-select {
+            margin-top: 4px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 12px;
+            padding: 4px 6px;
+            border-radius: 8px;
+            border: 2px solid var(--wood);
+            background: #FFFBF0;
+            color: var(--ink);
+            max-width: 100%;
         }
 
         /* ---------- Notification plein écran (réponse d'un joueur) ---------- */
@@ -1910,6 +2111,29 @@
                     <button id="param3" onclick="selectParam('param3')">Equations</button>
                     <button id="param4" onclick="selectParam('param4')">Pythagore</button>
                     <button id="param5" onclick="selectParam('param5')">Math general knowledge</button>
+                </div>
+            </div>
+
+            <div class="param-section">
+                <h4>Mode équipes</h4>
+                <div class="param-grid">
+                    <button id="param60" onclick="selectParam('param60')">Activer le mode équipes</button>
+                </div>
+                <div class="param-grid">
+                    <button id="param61" onclick="selectParam('param61')">2 équipes</button>
+                    <button id="param62" onclick="selectParam('param62')">3 équipes</button>
+                    <button id="param63" onclick="selectParam('param63')">4 équipes</button>
+                </div>
+                <div id="teamNamesSection">
+                    <input type="text" id="teamNameInput0" placeholder="Équipe 1" maxlength="20">
+                    <input type="text" id="teamNameInput1" placeholder="Équipe 2" maxlength="20">
+                    <input type="text" id="teamNameInput2" placeholder="Équipe 3" maxlength="20">
+                    <input type="text" id="teamNameInput3" placeholder="Équipe 4" maxlength="20">
+                </div>
+                <div class="param-grid">
+                    <button id="param71" onclick="selectParam('param71')">Les joueurs choisissent</button>
+                    <button id="param72" onclick="selectParam('param72')">Le maître assigne</button>
+                    <button id="param73" onclick="selectParam('param73')">Assignation aléatoire</button>
                 </div>
             </div>
 
