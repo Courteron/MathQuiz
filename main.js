@@ -36,6 +36,7 @@ function getOrCreateGame(gameId) {
       gameStarted: false,
       clients: new Map(),
       currentQuestions: new Map(),
+      teamConfig: null,
     };
     games.set(gameId, game);
     console.log(`Created new game : ${gameId}`);
@@ -192,6 +193,31 @@ wss.on('connection', (ws) => {
         break;
       }
 
+      case 'set_team_config': {
+        const game = getGame(info.gameId);
+        if (!game || ws !== game.masterWs) {
+          send(ws, { type: 'error', message: 'Seul le maître de cette partie peut configurer les équipes.' });
+          return;
+        }
+        game.teamConfig = {
+          enabled: !!data.enabled,
+          teamCount: data.teamCount,
+          mode: data.mode,
+          teams: data.teams,
+        };
+        break;
+      }
+
+      case 'assign_team': {
+        const game = getGame(info.gameId);
+        if (!game || ws !== game.masterWs) {
+          send(ws, { type: 'error', message: 'Seul le maître de cette partie peut assigner une équipe.' });
+          return;
+        }
+        broadcastToSingleClient(game, data.pseudo, { type: 'team_assigned', teamId: data.teamId });
+        break;
+      }
+
       case 'end_game': {
         const game = getGame(info.gameId);
         if (!game || ws !== game.masterWs) {
@@ -209,6 +235,15 @@ wss.on('connection', (ws) => {
       }
 
       // ---------------- CLIENTS ----------------
+
+      case 'get_team_config': {
+        const game = getGame(data.game_id);
+        const teamConfig = game && game.teamConfig
+          ? game.teamConfig
+          : { enabled: false, teamCount: 0, mode: null, teams: [] };
+        send(ws, { type: 'team_config', ...teamConfig });
+        break;
+      }
 
       case 'pseudo': {
         if (!data.game_id) {
@@ -245,7 +280,7 @@ wss.on('connection', (ws) => {
         });
 
         // Le master de CETTE partie est informé de chaque arrivée de joueur
-        sendToMaster(game, { type: 'client_joined', id: info.id, pseudo: info.pseudo });
+        sendToMaster(game, { type: 'client_joined', id: info.id, pseudo: info.pseudo, teamId: data.teamId ?? null });
         console.log(`Client ${info.pseudo} (${info.id}) a rejoint la partie ${data.game_id} - Master prévenu.`);
         break;
       }
