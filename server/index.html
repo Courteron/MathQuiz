@@ -880,7 +880,7 @@
                             window.updatePlayerScore(data.pseudo, Math.floor(user.points));
 
                             if (user.answered < question_number) {
-                                setTimeout(() => send_question(data.pseudo), 250);
+                                setTimeout(() => send_question(data.pseudo), 1);
                             } else {
                                 console.log("Player finished all questions: ", data.pseudo);
                                 const victorySound = sound_effects_on

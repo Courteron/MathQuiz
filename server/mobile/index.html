@@ -1022,15 +1022,15 @@
             game_id: Gamecode
           }));
         }
-        answerFeedback.textContent = 'Réponse envoyée, on attend le verdict…';
+        answerFeedback.textContent = 'Answer sent, waiting for answer';
         got_answer = false;
         setTimeout(() => verify_answer_sent(answer, 0), 100);
       }
       function verify_answer_sent(answer, attempt) {
         if (got_answer) return;
         if (attempt > 100) {
-          answerFeedback.textContent = 'Connexion perdue, en attente de reconnexion…';
-          return;
+          answerFeedback.textContent = 'Connection lost ... reconnecting';
+          //return;
         }
         if (socket && socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({
@@ -1041,7 +1041,7 @@
             game_id: Gamecode
           }));
         }
-        setTimeout(() => verify_answer_sent(answer, attempt + 1), 100);
+        setTimeout(() => verify_answer_sent(answer, attempt + 1), 10);
       }
       function renderFeedback(data) {
         got_answer = true;
