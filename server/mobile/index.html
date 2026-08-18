@@ -957,6 +957,12 @@
               bgMusic.pause();
               showView(pseudoView);
               break;
+            case 'invalid_code':
+              pseudo = '';
+              bgMusic.pause();
+              pseudoError.textContent = 'Ce code de partie n\'est plus valide. Demande le nouveau code à l\'hôte.';
+              showView(pseudoView);
+              break;
             case 'banned':
               isBanned = true;
               pseudo = '';

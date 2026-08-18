@@ -179,9 +179,24 @@
         }
         const audioElement = new Audio("assets/music" + music_id + ".mp3");
 
+        // Rafraîchit le texte du code + le QR code affichés à partir de la
+        // valeur courante de Gamecode (appelé au lancement ET après une
+        // régénération de code, pour ne pas dupliquer cette logique).
+        function updateGameCodeDisplay() {
+            const codeEl = document.getElementById("inputgameCode");
+            if (codeEl) {
+                codeEl.textContent =
+                    `Scan QR code or launch ${window.location.origin} , choose Join a game and enter code : ${Gamecode}`;
+            }
+            const qrDiv = document.getElementById("qrcode");
+            if (qrDiv) {
+                qrDiv.innerHTML = '';
+                new QRCode(qrDiv, `${window.location.origin}/mobile/index.html?code=${Gamecode}`);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById("inputgameCode").textContent =
-                `Scan QR code or launch ${window.location.origin} , choose Join a game and enter code : ${Gamecode}`;
+            updateGameCodeDisplay();
             connect();
 
             document.getElementById("join-game").addEventListener("click", () => {
@@ -346,10 +361,7 @@
             const hdiv = document.getElementById("players");
             if (hdiv) hdiv.style.display = 'block';
             generate_question_list();
-            new QRCode(
-                document.getElementById("qrcode"),
-                `${window.location.origin}/mobile/index.html?code=${Gamecode}`
-            );
+            updateGameCodeDisplay();
         }
         function generate_calculation() {
             const types = [];
@@ -682,6 +694,13 @@
                 }
             });
 
+            document.getElementById("regenerateCodeBtn").addEventListener("click", () => {
+                socket.send(JSON.stringify({
+                    type: "regenerate_code",
+                    game_id: Gamecode
+                }));
+            });
+
         });
 
         function verify_game_ended() {
@@ -775,6 +794,12 @@
                         if (data.role == "master") {
                             console.log("Master acknowledged by server");
                         }
+                        break;
+
+                    case 'code_regenerated':
+                        console.log(`Code de partie régénéré : ${data.old_game_id} → ${data.new_game_id}`);
+                        Gamecode = data.new_game_id;
+                        updateGameCodeDisplay();
                         break;
 
                     case 'client_joined':
@@ -1989,6 +2014,7 @@
         <ul id="playerList"></ul>
         <p id="startGameWarning" class="form-warning"></p>
         <button id="startGameBtn">Start game</button>
+        <button id="regenerateCodeBtn" class="secondary" type="button">Régénérer la session</button>
     </div>
     <div id="sea">
     </div>
