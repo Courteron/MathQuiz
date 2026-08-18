@@ -36,6 +36,7 @@ function getOrCreateGame(gameId) {
       gameStarted: false,
       clients: new Map(),
       currentQuestions: new Map(),
+      bannedPseudos: new Set(),
     };
     games.set(gameId, game);
     console.log(`Nouvelle partie créée : ${gameId}`);
@@ -222,6 +223,11 @@ wss.on('connection', (ws) => {
 
         const game = getOrCreateGame(data.game_id);
 
+        if (game.bannedPseudos.has(data.pseudo)) {
+          send(ws, { type: 'banned', pseudo: data.pseudo });
+          return;
+        }
+
         const pseudoTaken = [...game.clients.values()].some(
           (c) => c.pseudo === data.pseudo && c.id !== info.id
         );
@@ -286,6 +292,31 @@ wss.on('connection', (ws) => {
           answer: data.answer,
           correct: isCorrect,
         });
+        break;
+      }
+
+      case 'ban_player': {
+        const game = getGame(info.gameId);
+        if (!game || ws !== game.masterWs) {
+          send(ws, { type: 'error', message: 'Seul le maître de cette partie peut bannir un joueur.' });
+          return;
+        }
+        if (!data.pseudo) {
+          send(ws, { type: 'error', message: 'ban_player nécessite pseudo.' });
+          return;
+        }
+
+        // Le bannissement vit pour la durée de vie de CETTE partie en mémoire :
+        // pas de compte/IP à bannir, donc rejoindre sous un autre pseudo reste possible.
+        game.bannedPseudos.add(data.pseudo);
+        console.log(`[${info.gameId}] Joueur banni : ${data.pseudo}`);
+
+        for (const [clientWs, clientInfo] of game.clients) {
+          if (clientInfo.pseudo === data.pseudo) {
+            send(clientWs, { type: 'banned', pseudo: data.pseudo });
+            clientWs.close();
+          }
+        }
         break;
       }
 

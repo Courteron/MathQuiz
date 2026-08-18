@@ -798,6 +798,35 @@
                         display_user_div.id = "display_user_div_" + data.pseudo;
                         display_user_div.innerHTML = `<img src="https://api.dicebear.com/10.x/loops/svg?seed=${encodeURIComponent(data.pseudo)}" alt="${escapeHtml(data.pseudo)}"><p class="user-pseudo">${escapeHtml(data.pseudo)}</p>`;
 
+                        // Bouton banni construit à part (pas d'onclick inline avec le
+                        // pseudo brut interpolé dans du HTML) + confirmation en deux
+                        // clics plutôt qu'un confirm() bloquant, qui gèlerait le master.
+                        const banBtn = document.createElement("button");
+                        banBtn.type = "button";
+                        banBtn.className = "ban-btn";
+                        banBtn.textContent = "Bannir";
+                        banBtn.setAttribute("aria-label", `Bannir ${data.pseudo}`);
+                        let banConfirmTimeout = null;
+                        banBtn.addEventListener("click", () => {
+                            if (banBtn.classList.contains("confirm")) {
+                                clearTimeout(banConfirmTimeout);
+                                socket.send(JSON.stringify({
+                                    type: "ban_player",
+                                    pseudo: data.pseudo,
+                                    game_id: Gamecode
+                                }));
+                                banBtn.disabled = true;
+                                banBtn.textContent = "Banni…";
+                            } else {
+                                banBtn.classList.add("confirm");
+                                banBtn.textContent = "Confirmer ?";
+                                banConfirmTimeout = setTimeout(() => {
+                                    banBtn.classList.remove("confirm");
+                                    banBtn.textContent = "Bannir";
+                                }, 3000);
+                            }
+                        });
+                        display_user_div.appendChild(banBtn);
 
                         const element = document.getElementById("playerList");
 
@@ -917,18 +946,17 @@
                     }
                     case 'client_left': {
                         console.log("Client left: ", data.pseudo, " with id: ", data.id);
-                        if (verify_game_ended()) {
-                            const displayUserDiv = document.getElementById("display_user_div_" + data.pseudo);
-                            window.removePlayer(data.pseudo);
-                            if (displayUserDiv) displayUserDiv.remove();
+                        const displayUserDiv = document.getElementById("display_user_div_" + data.pseudo);
+                        window.removePlayer(data.pseudo);
+                        if (displayUserDiv) displayUserDiv.remove();
 
-                            // Sans ça, une partie en mode "nombre de questions" ne peut
-                            // jamais se terminer si un joueur quitte avant d'avoir fini
-                            // (verify_game_ended() l'attendrait indéfiniment).
-                            progression.delete(data.pseudo);
-                            const leftShip = document.getElementById("ship-" + data.pseudo);
-                            if (leftShip) leftShip.remove();
-                        }
+                        // Sans ça, une partie en mode "nombre de questions" ne peut
+                        // jamais se terminer si un joueur quitte avant d'avoir fini
+                        // (verify_game_ended() l'attendrait indéfiniment).
+                        progression.delete(data.pseudo);
+                        const leftShip = document.getElementById("ship-" + data.pseudo);
+                        if (leftShip) leftShip.remove();
+
                         const leftAvatarUrl = `https://api.dicebear.com/10.x/loops/svg?seed=${encodeURIComponent(data.pseudo)}`;
                         const leftSafePseudo = escapeHtml(data.pseudo);
                         container.innerHTML = `
@@ -1518,6 +1546,28 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+
+        .ban-btn {
+            margin-top: 6px;
+            padding: 5px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--danger);
+            background: #FFFBF0;
+            border: 2px solid var(--danger);
+            border-radius: 999px;
+            box-shadow: none;
+        }
+
+        .ban-btn:active {
+            transform: translateY(1px);
+            box-shadow: none;
+        }
+
+        .ban-btn.confirm {
+            background: var(--danger);
+            color: #fff;
         }
 
         /* ---------- Notification plein écran (réponse d'un joueur) ---------- */
