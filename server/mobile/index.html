@@ -909,8 +909,9 @@
         socket.addEventListener('message', (event) => {
           let data;
           try { data = JSON.parse(event.data); }
-          catch (e) { console.warn('Message WS non-JSON ignoré :', event.data); return; }
-
+          catch (e) { console.warn('Non Json message ignored', event.data); return; }
+          console.log(data.type);
+          console.log(data);
           switch (data.type) {
             case 'question':
               renderQuestion(data);
@@ -940,6 +941,7 @@
               }
               break;
             case 'answer_ack':
+              got_answer = true;
               renderFeedback(data);
               break;
             case 'percent_info': {
@@ -1041,10 +1043,10 @@
             game_id: Gamecode
           }));
         }
-        setTimeout(() => verify_answer_sent(answer, attempt + 1), 10);
+        setTimeout(() => verify_answer_sent(answer, attempt + 1), 100);
       }
       function renderFeedback(data) {
-        got_answer = true;
+        
         let container = document.getElementById("container");
         answerFeedback.textContent = data.correct
           ? '🏆 Correct'

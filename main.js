@@ -17,7 +17,7 @@ app.use('/assets', express.static('assets'));
 const server = http.createServer(app);
 
 const wss = new WebSocketServer({ server });
-wss.on('error', (err) => console.error('Erreur WebSocketServer:', err.message));
+wss.on('error', (err) => console.error('WebSocketServer error:', err.message));
 
 const connections = new Map();
 
@@ -38,7 +38,7 @@ function getOrCreateGame(gameId) {
       currentQuestions: new Map(),
     };
     games.set(gameId, game);
-    console.log(`Nouvelle partie créée : ${gameId}`);
+    console.log(`Created new game : ${gameId}`);
   }
   return game;
 }
@@ -49,7 +49,7 @@ function cleanupGameIfEmpty(gameId) {
   const game = games.get(gameId);
   if (game && !game.masterWs && game.clients.size === 0) {
     games.delete(gameId);
-    console.log(`Partie ${gameId} vidée, suppression.`);
+    console.log(`game ${gameId} emptied, currently deleting it.`);
   }
 }
 
@@ -101,12 +101,12 @@ wss.on('connection', (ws) => {
   const id = crypto.randomUUID();
   const meta = { id, gameId: null, pseudo: null, role: null };
   connections.set(ws, meta);
-  console.log(`Nouvelle connexion WebSocket (${id})`);
+  console.log(`New websocket connection(${id})`);
 
   // Sans ce handler, une erreur socket (coupure réseau brutale, etc.) fait
   // planter tout le process Node (EventEmitter 'error' non écouté).
   ws.on('error', (err) => {
-    console.error(`Erreur WebSocket (${id}):`, err.message);
+    console.error(`WebSocket error (${id}):`, err.message);
   });
 
   ws.on('message', (raw) => {
@@ -124,21 +124,21 @@ wss.on('connection', (ws) => {
 
       case 'master_init': {
         if (!data.game_id) {
-          send(ws, { type: 'error', message: 'master_init nécessite game_id.' });
+          send(ws, { type: 'error', message: 'Master init needs game_id' });
           return;
         }
 
         const game = getOrCreateGame(data.game_id);
 
         if (game.masterWs && game.masterWs !== ws) {
-          send(ws, { type: 'error', message: 'Un maître est déjà connecté pour cette partie.' });
+          send(ws, { type: 'error', message: 'A master is already logged in for this game' });
           return;
         }
 
         game.masterWs = ws;
         info.role = 'master';
         info.gameId = data.game_id;
-        console.log(`Master initialisé pour la partie ${data.game_id}`);
+        console.log(`Master initialised for ${data.game_id}`);
 
         send(ws, {
           type: 'acknowledge',
@@ -153,11 +153,11 @@ wss.on('connection', (ws) => {
       case 'start_game': {
         const game = getGame(info.gameId);
         if (!game || ws !== game.masterWs) {
-          send(ws, { type: 'error', message: 'Seul le maître de cette partie peut la démarrer.' });
+          send(ws, { type: 'error', message: 'Only master can start a game' });
           return;
         }
         game.gameStarted = true;
-        console.log(`Partie ${info.gameId} démarrée par le master`);
+        console.log(`Game ${info.gameId} started by master`);
         broadcastToClients(game, {
           type: 'game_started',
           game_id: info.gameId,
@@ -169,11 +169,11 @@ wss.on('connection', (ws) => {
       case 'send_question': {
         const game = getGame(info.gameId);
         if (!game || ws !== game.masterWs) {
-          send(ws, { type: 'error', message: 'Seul le maître de cette partie peut envoyer une question.' });
+          send(ws, { type: 'error', message: 'Only master can send a question' });
           return;
         }
         if (!data.to_pseudo) {
-          send(ws, { type: 'error', message: 'send_question nécessite to_pseudo.' });
+          send(ws, { type: 'error', message: 'send_question needs to_pseudo' });
           return;
         }
 
@@ -187,7 +187,7 @@ wss.on('connection', (ws) => {
         };
         game.currentQuestions.set(data.to_pseudo, question);
         console.log(question.choices);
-        console.log(`[${info.gameId}] Nouvelle question envoyée à ${data.to_pseudo} : ${question.id}`);
+        console.log(`[${info.gameId}] New question sent to ${data.to_pseudo} : ${question.id}`);
         broadcastToSingleClient(game, data.to_pseudo, { type: 'question', ...publicQuestion(question) });
         break;
       }
@@ -195,7 +195,7 @@ wss.on('connection', (ws) => {
       case 'end_game': {
         const game = getGame(info.gameId);
         if (!game || ws !== game.masterWs) {
-          send(ws, { type: 'error', message: 'Seul le maître de cette partie peut la terminer.' });
+          send(ws, { type: 'error', message: 'Only a master can stop the game' });
           return;
         }
         // Idempotent : évite un double broadcast si le master déclenche
@@ -203,7 +203,7 @@ wss.on('connection', (ws) => {
         if (!game.gameStarted) return;
         game.gameStarted = false;
         game.currentQuestions.clear(); // on vide toutes les questions en cours de CETTE partie
-        console.log(`Partie ${info.gameId} terminée par le master`);
+        console.log(`Game ${info.gameId} ended by master`);
         broadcastToClients(game, { type: 'game_ended', game_id: info.gameId, scores:data.scores });
         break;
       }
@@ -212,11 +212,11 @@ wss.on('connection', (ws) => {
 
       case 'pseudo': {
         if (!data.game_id) {
-          send(ws, { type: 'error', message: 'pseudo nécessite game_id.' });
+          send(ws, { type: 'error', message: 'pseudo needs game_id.' });
           return;
         }
         if (!data.pseudo || !data.pseudo.trim()) {
-          send(ws, { type: 'error', message: 'pseudo ne peut pas être vide.' });
+          send(ws, { type: 'error', message: 'pseudo cannot be empty' });
           return;
         }
 
@@ -235,7 +235,7 @@ wss.on('connection', (ws) => {
         if (!info.role) info.role = 'client';
         game.clients.set(ws, info);
 
-        console.log(`[${data.game_id}] Pseudo enregistré : ${data.pseudo} (${info.id})`);
+        console.log(`[${data.game_id}] Pseudo saved : ${data.pseudo} (${info.id})`);
 
         send(ws, {
           type: 'acknowledge',
@@ -253,7 +253,7 @@ wss.on('connection', (ws) => {
       case 'answer': {
         const game = getGame(info.gameId);
         if (!info.pseudo || !game) {
-          send(ws, { type: 'error', message: 'Pseudo/partie non définis pour cette connexion.' });
+          send(ws, { type: 'error', message: 'Pseudo/game not defined for this connections' });
           return;
         }
 
