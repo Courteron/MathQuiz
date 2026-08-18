@@ -20,6 +20,9 @@
         let divisions = 0;
         let equation_solving = 0;
         let simple_pythagore = 0;
+        let powers_question = 0;
+        let sqrt_question = 0;
+        let percentage_question = 0;
         let under_hundred = 0;
         let under_thousand = 0;
         let simple_numbers = 0;
@@ -257,6 +260,15 @@
                             case 5:
                                 math_gen_question = 1;
                                 break;
+                            case 6:
+                                powers_question = 1;
+                                break;
+                            case 7:
+                                sqrt_question = 1;
+                                break;
+                            case 8:
+                                percentage_question = 1;
+                                break;
                             case 21:
                                 under_hundred = 1;
                                 break;
@@ -333,7 +345,8 @@
             // Sans au moins un type de calcul actif, generate_question_list()
             // ne peut produire aucune question et boucle indéfiniment (tab gelé).
             const hasCalculationType = additions || substractions || multiplications ||
-                divisions || equation_solving || math_gen_question || simple_pythagore;
+                divisions || equation_solving || math_gen_question || simple_pythagore ||
+                powers_question || sqrt_question || percentage_question;
             const startWarning = document.getElementById("startWarning");
             if (!hasCalculationType) {
                 if (startWarning) startWarning.textContent = "Sélectionne au moins un type de calcul avant de démarrer !";
@@ -361,6 +374,9 @@
             if (equation_solving) types.push("equa");
             if (math_gen_question) types.push('genQ');
             if (simple_pythagore) types.push('pyth');
+            if (powers_question) types.push('pow');
+            if (sqrt_question) types.push('sqrt');
+            if (percentage_question) types.push('pct');
 
             if (types.length === 0) {
                 console.log("No calculation available");
@@ -461,6 +477,36 @@
             if (type == "genQ") {
                 const genQQ = math_general_questions[Math.floor(Math.random() * math_general_questions.length)];
                 return genQQ.question + "<!!!>" + genQQ.answers + "<!!!>" + genQQ.correct_ans;
+            }
+            if (type === "pow") {
+                let max = 10000;
+                if (under_hundred) max = 100;
+                else if (under_thousand) max = 1000;
+                const exp = Math.random() < 0.5 ? 2 : 3;
+                const maxBase = Math.max(3, Math.floor(Math.pow(max, 1 / exp)));
+                const base = Math.floor(Math.random() * (maxBase - 1)) + 2;
+                console.log(`Puissance: ${base}^${exp}`);
+                return `Combien fait ${base} puissance ${exp} ?|${Math.pow(base, exp)}`;
+            }
+            if (type === "sqrt") {
+                let maxRoot = 99;
+                if (under_hundred) maxRoot = 10;
+                else if (under_thousand) maxRoot = 31;
+                const root = Math.floor(Math.random() * (maxRoot - 1)) + 2;
+                console.log(`Racine carrée de ${root * root}`);
+                return `Quelle est la racine carrée de ${root * root} ?|${root}`;
+            }
+            if (type === "pct") {
+                const pctSteps = { 5: 20, 10: 10, 20: 5, 25: 4, 50: 2, 75: 4 };
+                const percents = Object.keys(pctSteps).map(Number);
+                const pct = percents[Math.floor(Math.random() * percents.length)];
+                const step = pctSteps[pct];
+                let max = 10000;
+                if (under_hundred) max = 100;
+                else if (under_thousand) max = 1000;
+                const base = step * (Math.floor(Math.random() * Math.floor(max / step)) + 1);
+                console.log(`Pourcentage: ${pct}% de ${base}`);
+                return `Combien fait ${pct}% de ${base} ?|${base * pct / 100}`;
             }
         }
         function generate_fake_result(correctAnswer) {
@@ -1910,6 +1956,9 @@
                     <button id="param3" onclick="selectParam('param3')">Equations</button>
                     <button id="param4" onclick="selectParam('param4')">Pythagore</button>
                     <button id="param5" onclick="selectParam('param5')">Math general knowledge</button>
+                    <button id="param6" onclick="selectParam('param6')">Puissances</button>
+                    <button id="param7" onclick="selectParam('param7')">Racines carrées</button>
+                    <button id="param8" onclick="selectParam('param8')">Pourcentages</button>
                 </div>
             </div>
 
