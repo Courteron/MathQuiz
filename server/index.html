@@ -740,6 +740,17 @@
             return div.innerHTML;
         }
 
+        // Formule de score partagée entre les deux modes de jeu : bonus de vitesse
+        // incrémental (jusqu'à 3000 pts pour une réponse correcte instantanée,
+        // dégressif jusqu'à 0 pts vers 60s), ajouté (pas recalculé) au score courant.
+        // responseTime vient du serveur (main.js), mesuré entre l'envoi de la
+        // question et la réponse du joueur — autoritaire, insensible au clock drift client.
+        function computePointsBonus(correct, responseTime) {
+            if (!correct) return 0;
+            const time = responseTime ?? 60;
+            return 50 * Math.max(0, 60 - time);
+        }
+
         function buildWebSocketUrl() {
             const loc = window.location;
             const scheme = loc.protocol === 'https:' ? 'wss' : 'ws';
@@ -822,11 +833,9 @@
                                 console.log(data.pseudo + " : temps écoulé, réponse non comptabilisée");
                             } else {
                                 user.answered++;
-                                if (data.correct) {
-                                    user.correct++;
-                                    user.points = 200 * user.correct / user.answered;
-                                }
-                                window.updatePlayerScore(data.pseudo, user.points);
+                                if (data.correct) user.correct++;
+                                user.points += computePointsBonus(data.correct, data.responseTime);
+                                window.updatePlayerScore(data.pseudo, Math.floor(user.points));
                                 const percent = (100 * ((Date.now() - user.epoch) / (minutes * 60 * 1000))).toFixed(2);
                                 if (ship) ship.style.setProperty("--ship-x", percent + "%");
                                 if (crew) crew.setAttribute("aria-label", data.pseudo + ", " + percent + "% of the race");
@@ -875,8 +884,7 @@
 
                             setTimeout(() => { container.innerHTML = ""; }, 1500);
 
-                            const time = (Date.now() - user.epoch) / 1000;
-                            user.points = 1000 * (user.correct / question_number) * (question_number / time);
+                            user.points += computePointsBonus(data.correct, data.responseTime);
                             window.updatePlayerScore(data.pseudo, Math.floor(user.points));
 
                             if (user.answered < question_number) {
