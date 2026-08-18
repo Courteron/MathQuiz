@@ -24,8 +24,46 @@ const connections = new Map();
 
 const games = new Map();
 
+// Anciens codes de partie régénérés : un pseudo tentant de rejoindre avec un
+// code retiré doit être clairement rejeté, pas silencieusement recréer une
+// partie fantôme via getOrCreateGame.
+const retiredGameIds = new Set();
+
 function getGame(gameId) {
   return games.get(gameId);
+}
+
+function generateGameId() {
+  // Alphabet sans caractères ambigus (I/1, O/0).
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let id;
+  do {
+    id = '';
+    for (let i = 0; i < 6; i++) {
+      id += alphabet[crypto.randomInt(alphabet.length)];
+    }
+  } while (games.has(id));
+  return id;
+}
+
+// Change l'identifiant public (le "code") d'une partie déjà en cours, sans
+// toucher aux connexions WebSocket existantes : master et joueurs déjà
+// connectés continuent normalement, seul le code que de NOUVEAUX joueurs
+// doivent fournir pour rejoindre change.
+function regenerateGameId(game, oldGameId) {
+  const newGameId = generateGameId();
+  games.delete(oldGameId);
+  games.set(newGameId, game);
+  retiredGameIds.add(oldGameId);
+
+  const masterInfo = connections.get(game.masterWs);
+  if (masterInfo) masterInfo.gameId = newGameId;
+  for (const clientInfo of game.clients.values()) {
+    clientInfo.gameId = newGameId;
+  }
+
+  console.log(`Partie ${oldGameId} renommée en ${newGameId} (régénération du code)`);
+  return newGameId;
 }
 
 function getOrCreateGame(gameId) {
@@ -220,6 +258,11 @@ wss.on('connection', (ws) => {
           return;
         }
 
+        if (retiredGameIds.has(data.game_id)) {
+          send(ws, { type: 'invalid_code' });
+          return;
+        }
+
         const game = getOrCreateGame(data.game_id);
 
         const pseudoTaken = [...game.clients.values()].some(
@@ -286,6 +329,47 @@ wss.on('connection', (ws) => {
           answer: data.answer,
           correct: isCorrect,
         });
+        break;
+      }
+
+      case 'ban_player': {
+        const game = getGame(info.gameId);
+        if (!game || ws !== game.masterWs) {
+          send(ws, { type: 'error', message: 'Seul le maître de cette partie peut bannir un joueur.' });
+          return;
+        }
+        if (!data.pseudo) {
+          send(ws, { type: 'error', message: 'ban_player nécessite pseudo.' });
+          return;
+        }
+
+        console.log(`[${info.gameId}] Joueur banni : ${data.pseudo}`);
+
+        for (const [clientWs, clientInfo] of game.clients) {
+          if (clientInfo.pseudo === data.pseudo) {
+            send(clientWs, { type: 'banned', pseudo: data.pseudo });
+            clientWs.close();
+          }
+        }
+
+        // Un pseudo banni ne suffit pas si le joueur peut revenir sous un
+        // autre nom : on régénère aussi le code de la partie, sans toucher
+        // aux joueurs déjà connectés.
+        const oldGameIdBan = info.gameId;
+        const newGameIdBan = regenerateGameId(game, oldGameIdBan);
+        send(ws, { type: 'code_regenerated', old_game_id: oldGameIdBan, new_game_id: newGameIdBan });
+        break;
+      }
+
+      case 'regenerate_code': {
+        const game = getGame(info.gameId);
+        if (!game || ws !== game.masterWs) {
+          send(ws, { type: 'error', message: 'Seul le maître de cette partie peut régénérer le code.' });
+          return;
+        }
+        const oldGameId = info.gameId;
+        const newGameId = regenerateGameId(game, oldGameId);
+        send(ws, { type: 'code_regenerated', old_game_id: oldGameId, new_game_id: newGameId });
         break;
       }
 

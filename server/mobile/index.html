@@ -837,6 +837,7 @@
       let pseudo = '';
       let currentQuestionId = null;
       let socket = null;
+      let isBanned = false;
 
       // ---------- Construction de l'URL WebSocket ----------
       // Le serveur Node.js sert les fichiers statiques ET le WebSocket sur le
@@ -958,6 +959,22 @@
               bgMusic.pause();
               showView(pseudoView);
               break;
+            case 'invalid_code':
+              pseudo = '';
+              bgMusic.pause();
+              pseudoError.textContent = 'Ce code de partie n\'est plus valide. Demande le nouveau code à l\'hôte.';
+              showView(pseudoView);
+              break;
+            case 'banned':
+              isBanned = true;
+              pseudo = '';
+              bgMusic.pause();
+              form.style.display = 'none';
+              document.querySelector('#pseudoView .subtitle').textContent =
+                'Le maître du jeu t\'a banni de cette partie.';
+              pseudoError.textContent = 'Tu ne peux plus rejoindre cette session.';
+              showView(pseudoView);
+              break;
             case 'error':
               console.error('Erreur serveur :', data.message);
               break;
@@ -971,6 +988,8 @@
 
         socket.addEventListener('close', () => {
           setStatus('disconnected');
+          // Un joueur banni ne doit jamais retenter de se reconnecter automatiquement.
+          if (isBanned) return;
           // Tentative de reconnexion automatique
           setTimeout(connect, 2000);
         });
