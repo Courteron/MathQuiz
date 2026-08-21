@@ -837,10 +837,10 @@
                                 */
                                 if (data.correct) {
                                     user.correct++;
-                                    user.points = user.points*(1+(minutes*60*user.answered)/ (Date.now() - user.last_epoch)/1000);
+                                    user.points = user.points*(1.5+(minutes*60*user.answered)/ (Date.now() - user.last_epoch)/1000);
                                 }
                                 else {
-                                    user.points = user.points*((minutes*60*user.answered)/ (Date.now() - user.last_epoch)/1000);
+                                    user.points = user.points*(0.75+(minutes*60*user.answered)/ (Date.now() - user.last_epoch)/1000);
                                 }
                                 window.updatePlayerScore(data.pseudo, user.points);
                                 const percent = (100 * ((Date.now() - user.epoch) / (minutes * 60 * 1000))).toFixed(2);
