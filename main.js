@@ -292,7 +292,7 @@ wss.on('connection', (ws) => {
       case 'percent_info': {
         const game = getGame(info.gameId);
         if (!game || ws !== game.masterWs) {
-          send(ws, { type: 'error', message: 'Seul le maître de cette partie peut envoyer les pourcentages.' });
+          send(ws, { type: 'error', message: 'Only the master of this game can send percentages' });
           return;
         }
         broadcastToSingleClient(game, data.to_pseudo, {
@@ -318,13 +318,13 @@ wss.on('connection', (ws) => {
 
     if (game && ws === game.masterWs) {
       game.masterWs = null;
-      console.log(`Master de la partie ${info.gameId} déconnecté`);
+      console.log(`Master de la partie ${info.gameId} disconnected`);
       broadcastToClients(game, { type: 'master_disconnected' });
       cleanupGameIfEmpty(info.gameId);
       return;
     }
 
-    console.log(`Déconnexion : ${info.pseudo ?? 'inconnu'} (${info.id}) [partie ${info.gameId ?? 'aucune'}]`);
+    console.log(`Disconnected : ${info.pseudo ?? 'inconnu'} (${info.id}) [partie ${info.gameId ?? 'aucune'}]`);
     if (game && info.role === 'client') {
       game.clients.delete(ws);
       game.currentQuestions.delete(info.pseudo); // nettoyage de sa question en cours
@@ -366,10 +366,10 @@ function fetchNgrokUrl(retries = 20) {
 }
 
 server.listen(port, async () => {
-    console.log(`Serveur démarré sur http://localhost:${port}`);
+    console.log(`Server started on  http://localhost:${port}`);
 
     if (!process.env.NGROK_AUTHTOKEN) {
-        console.warn('NGROK_AUTHTOKEN non défini (.env) : tunnel ngrok non démarré.');
+        console.warn('NGROK_AUTHTOKEN not defined (DOTENV), starting on localhost');
         return;
     }
 
@@ -380,7 +380,7 @@ server.listen(port, async () => {
     ]);
 
     ngrokProcess.on('error', (err) => {
-        console.error('Impossible de lancer ngrok (binaire absent du PATH ?) :', err.message);
+        console.error('Cannot launch NGROK (binary absent ??) :', err.message);
     });
     ngrokProcess.stdout.on('data', (data) => console.log(`ngrok: ${data}`.trim()));
     ngrokProcess.stderr.on('data', (data) => console.error(`ngrok: ${data}`.trim()));
@@ -389,15 +389,15 @@ server.listen(port, async () => {
         const url = await fetchNgrokUrl();
         console.log(`URL ngrok: ${url}`);
     } catch (error) {
-        console.error('Erreur ngrok:', error.message);
+        console.error('NGROK error', error.message);
     }
 });
 
 process.on('uncaughtException', (err) => {
-    console.error('Erreur non capturée:', err);
+    console.error('Uncaught exception', err);
     process.exit(1);
 });
 
 process.on('unhandledRejection', (err) => {
-    console.error('Promesse non gérée:', err);
+    console.error('Unhandled rejection', err);
 });

@@ -181,7 +181,8 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("inputgameCode").textContent =
-                `Scan QR code or launch ${window.location.origin} , choose Join a game and enter code : ${Gamecode}`;
+                `Scan QR code or launch ${window.location.origin} , choose Join a game and enter code : `;
+            document.getElementById("code_placeholder").textContent = `${Gamecode}` ;
             connect();
 
             document.getElementById("join-game").addEventListener("click", () => {
@@ -1936,6 +1937,7 @@
         <h2>Waiting for players</h2>
         <div id="qrcode"></div>
         <h4 id="inputgameCode"></h4>
+        <h2 id="code_placeholder"></h2>
         <ul id="playerList"></ul>
         <p id="startGameWarning" class="form-warning"></p>
         <button id="startGameBtn">Start game</button>
