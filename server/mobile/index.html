@@ -860,8 +860,10 @@
 
       // ---------- Vues ----------
       function showView(view) {
+        console.log("Into showview");
         [pseudoView, waitingView, questionView].forEach(v => v.style.display = 'none');
         view.style.display = 'block';
+        console.log("Out of showview");
       }
 
       // ---------- Rejoindre la partie : avatar + musique ----------
@@ -914,9 +916,11 @@
           console.log(data);
           switch (data.type) {
             case 'question':
+              console.log("Received question");
               renderQuestion(data);
               break;
             case 'game_started':
+              console.log("Game started, data is down here :");
               console.log(data);
               bgMusic.src = "../assets/music" + data.music_id + ".mp3";
               bgMusic.play().catch(() => {});
@@ -996,10 +1000,11 @@
             btn.type = 'button';
             btn.className = 'choice-btn';
             btn.textContent = choice;
+            console.log("Creating a button with text:" + choice);
             btn.addEventListener('click', () => submitAnswer(choice, btn));
             choicesBox.appendChild(btn);
           });
-
+          console.log("Going to showview");
           showView(questionView);
         }
         catch (error) {
