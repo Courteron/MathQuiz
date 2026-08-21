@@ -182,7 +182,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById("inputgameCode").textContent =
                 `Scan QR code or launch ${window.location.origin} , choose Join a game and enter code : `;
-            document.getElementById("code_placeholder").textContent = `${Gamecode}` ;
+            document.getElementById("code_placeholder").textContent = `${Gamecode}`;
             connect();
 
             document.getElementById("join-game").addEventListener("click", () => {
@@ -647,6 +647,7 @@
                 setTimeout(() => {
                     for (const [key, value] of progression.entries()) {
                         value.epoch = Date.now();
+                        value.last_epoch = Date.now();
 
                         // Le bateau doit exister AVANT le premier envoi de question :
                         // une réponse trop rapide pourrait sinon chercher un élément
@@ -779,12 +780,16 @@
                         break;
 
                     case 'client_joined':
+                        if (verify_game_ended()) {
+                            break;
+                        }
                         console.log("Client joined: ", data.pseudo, " with id: ", data.id);
                         progression.set(data.pseudo, {
                             epoch: 0,
                             correct: 0,
                             answered: 0,
                             points: 0,
+                            last_epoch: 0,
                         });
 
                         window.addPlayer({
@@ -823,9 +828,19 @@
                                 console.log(data.pseudo + " : temps écoulé, réponse non comptabilisée");
                             } else {
                                 user.answered++;
+                                /*
+                                For time question
+                                CORRECT:
+                                POINTS = POINTS*(1+(TEMPS*Q_REPONDUE)/TEMPS_REPONSE_EN_S)
+                                UNCORRECT
+                                POINTS = POINTS*(TEMPS*Q_REPONDUE)/TEMPS_REPONSE_EN_S
+                                */
                                 if (data.correct) {
                                     user.correct++;
-                                    user.points = 200 * user.correct / user.answered;
+                                    user.points = user.points*(1+(minutes*60*user.answered)/ (Date.now() - user.last_epoch)/1000);
+                                }
+                                else {
+                                    user.points = user.points*((minutes*60*user.answered)/ (Date.now() - user.last_epoch)/1000);
                                 }
                                 window.updatePlayerScore(data.pseudo, user.points);
                                 const percent = (100 * ((Date.now() - user.epoch) / (minutes * 60 * 1000))).toFixed(2);
@@ -1149,10 +1164,10 @@
             })();
 
         });
-        function ngame_after(){
+        function ngame_after() {
             window.location.reload();
         }
-</script>
+    </script>
     <style>
         :root {
             --sea-deep: #072D3B;
@@ -1244,9 +1259,11 @@
         #billboard {
             display: none;
         }
+
         #new_game_after {
             display: none;
         }
+
         #up {
             display: flex;
             flex-direction: column;

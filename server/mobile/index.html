@@ -992,6 +992,7 @@
 
       // ---------- Rendu d'une question ----------
       function renderQuestion(data) {
+        delay(150);
         try {
           currentQuestionId = data.id ?? null;
           questionText.textContent = data.text || '';
