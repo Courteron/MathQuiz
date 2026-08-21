@@ -814,7 +814,7 @@
 
   <script>
     let params = new URLSearchParams(document.location.search);
-    let Gamecode = params.get("code"); 
+    let Gamecode = params.get("code");
     (function () {
       "use strict";
 
@@ -860,9 +860,9 @@
 
       // ---------- Vues ----------
       function showView(view) {
-        if (got_answer){
-          if (view=waitingView){
-            return ;
+        if (got_answer) {
+          if (view = waitingView) {
+            return;
           }
         }
         console.log("Into showview");
@@ -922,18 +922,21 @@
           switch (data.type) {
             case 'question':
               console.log("Received question");
-              renderQuestion(data);
+              setTimeout(() => {
+                renderQuestion(data);
+              }, 200);
+
               break;
             case 'game_started':
               console.log("Game started, data is down here :");
               console.log(data);
               bgMusic.src = "../assets/music" + data.music_id + ".mp3";
-              bgMusic.play().catch(() => {});
+              bgMusic.play().catch(() => { });
               break;
             case 'game_ended':
               bgMusic.src = "../assets/finished.mp3";
               document.getElementById("waiting-caption").textContent = "It's finished, look up to the screen to see your score";
-              bgMusic.play().catch(() => {});
+              bgMusic.play().catch(() => { });
               bgMusic.loop = false;
               const board = document.getElementById("billboard");
               if (board) board.style.display = 'block';
@@ -992,14 +995,13 @@
 
       // ---------- Rendu d'une question ----------
       function renderQuestion(data) {
-        delay(150);
         try {
           currentQuestionId = data.id ?? null;
           questionText.textContent = data.text || '';
           choicesBox.innerHTML = '';
           choicesBox.dataset.answered = 'false';
           answerFeedback.textContent = '';
-          console.log(typeof(data.choices));
+          console.log(typeof (data.choices));
           console.log(data.choices);
           (data.choices || []).forEach((choice) => {
             const btn = document.createElement('button');
@@ -1040,9 +1042,9 @@
         setTimeout(() => verify_answer_sent(answer, 0), 100);
       }
       function verify_answer_sent(answer, attempt) {
-        if (got_answer){
+        if (got_answer) {
           console.log("Answer acknowledged with server");
-          return ;
+          return;
         }
         if (attempt > 100) {
           answerFeedback.textContent = 'Connection lost ... reconnecting';
@@ -1060,7 +1062,7 @@
         setTimeout(() => verify_answer_sent(answer, attempt + 1), 100);
       }
       function renderFeedback(data) {
-        
+
         let container = document.getElementById("container");
         answerFeedback.textContent = data.correct
           ? '🏆 Correct'
