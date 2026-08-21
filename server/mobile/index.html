@@ -814,7 +814,7 @@
 
   <script>
     let params = new URLSearchParams(document.location.search);
-    let Gamecode = params.get("code"); // is the string "Jonathan"
+    let Gamecode = params.get("code"); 
     (function () {
       "use strict";
 
@@ -860,6 +860,11 @@
 
       // ---------- Vues ----------
       function showView(view) {
+        if (got_answer){
+          if (view=waitingView){
+            return ;
+          }
+        }
         console.log("Into showview");
         [pseudoView, waitingView, questionView].forEach(v => v.style.display = 'none');
         view.style.display = 'block';
@@ -1034,7 +1039,10 @@
         setTimeout(() => verify_answer_sent(answer, 0), 100);
       }
       function verify_answer_sent(answer, attempt) {
-        if (got_answer) return;
+        if (got_answer){
+          console.log("Answer acknowledged with server");
+          return ;
+        }
         if (attempt > 100) {
           answerFeedback.textContent = 'Connection lost ... reconnecting';
           //return;
